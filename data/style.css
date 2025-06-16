@@ -1,0 +1,414 @@
+/* === グローバル & 基本レイアウト === */
+body {
+    font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+    line-height: 1.7;
+    margin: 0;
+    padding: 0;
+    background-color: #aaa; 
+    color: #222; /* 基本の文字色を #222 に設定 */
+}
+
+/* 生テキストのソースとなるpreタグを非表示にする */
+#raw-src {
+    display: none;
+}
+
+.content-wrapper {
+    width: 90%;
+    max-width: 1000px;
+    min-width: 300px;
+    margin: 30px auto;
+    padding: 20px;
+    background-color: #fff;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    border-radius: 0px;
+}
+
+header { /* ページヘッダー用 */
+    border-bottom: 1px solid #eee;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+}
+
+footer { /* ページフッター用 */
+    margin-top: 30px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+    text-align: center;
+    font-size: 0.9em;
+    color: #222; /* フッターの文字色も #222 に統一 */
+}
+
+/* === #output 内のコンテンツスタイル === */
+
+/* --- H1のスタイル --- */
+#output h1 {
+    font-size: 2em;
+    color: #222; /* H1の文字色 */
+    border-bottom: 2px solid #3498db;
+    padding-bottom: 0.3em;
+    margin-top: 0;
+    margin-bottom: 0.8em;
+}
+
+/* --- H2の基本スタイル (これが「その他 / generic-h2」のベースにもなる) --- */
+#output h2 {
+    font-size: 1.6em;
+    color: #222; /* 基本のH2文字色 */
+    padding: 0.5em;
+    margin-top: 1.5em;
+    margin-left: 0px;
+    margin-bottom: 0.7em;
+    border-radius: 0px;
+    border-left: 10px solid #ccc;
+    border-bottom: 3px solid #ccc;
+    background-color: transparent;
+}
+
+/* --- 特定のH2タイプのスタイル --- */
+
+/* 説明 (H2.explain) ＝ 水色の背景 */
+#output .explain {
+    background-color: #e0f2f7;
+    color: #222; 
+    border-left: 10px solid #79bddc;
+    border-bottom: none;
+    border-radius: 4px;
+}
+
+/* 例 (H2.example) ＝ 紫色の背景 */
+#output .example {
+    background-color: #e1d6f0; 
+    color: #222; 
+    border-left:10px solid #7f758d;
+    border-bottom: none;
+    border-radius: 4px;
+}
+
+/* 練習 (H2.practice) ＝ 黄色い背景 */
+#output .practice {
+    background-color: #fffacd;
+    color: #222; 
+    border-left:10px solid #ffd700;
+    border-bottom: none;
+    border-radius: 4px;
+}
+
+/* 課題 (H2.assign) ＝ 赤色の背景 */
+#output .assign {
+    background-color: #ffdddd;
+    color: #222; 
+    border-left:10px solid #ff8a8a;
+    border-bottom: none;
+    border-radius: 4px;
+}
+
+/* --- 問題関連のスタイル (緑系テーマ) --- */
+#output h2.problem { /* 問題タイトル用のH2 */
+    font-size: 1.6em;       /* 他のH2とフォントサイズを統一 */
+    color: #222;             /* 文字色は #222 で統一 */
+    background-color: #c8e6c9; /* 薄い緑系の背景 */
+    padding: 0.5em;         /* 他のH2とパディングを統一 */
+    margin-top: 1.5em;      /* 他のH2とマージンを統一 */
+    margin-left: 0px;       /* 他のH2とマージンを統一 */
+    margin-bottom: 0.7em;   /* 他のH2とマージンを統一 */
+    border-left: 10px solid #81c784; /* 緑系の左ボーダー */
+    border-bottom: none;    /* 他の特別なH2と同様に、基本の下線を解除 */
+    border-radius: 4px;     /* 他の特別なH2と角丸の値を統一 */
+}
+
+#output .problem-container { /* 問題内容のコンテナ */
+    margin-top: 0.5em; /* h2.problem との間に少し余白 */
+    margin-bottom: 1.5em;
+    padding: 1em;
+    border: 1px solid #a5d6a7; /* やや薄い緑系の枠線 */
+    border-radius: 5px;
+    background-color: #e8f5e9; /* 非常に薄い緑系の背景 */
+}
+
+#output .problem-statement {
+    margin-bottom: 1em;
+    line-height: 1.6;
+    color: #222; 
+}
+
+#output .problem-interactive {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+}
+
+#output .problem-interactive label {
+    font-weight: bold;
+    color: #222;
+}
+
+#output .problem-interactive input[type="text"] {
+    padding: 0.5em;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    flex-grow: 1;
+    min-width: 100px;
+}
+
+#output .problem-interactive input[type="text"]:disabled {
+    background-color: #f0f0f0;
+    color: #757575;
+    cursor: not-allowed;
+}
+
+#output .problem-interactive button {
+    background-color: #4CAF50; /* 緑系のボタン背景色 */
+    color: white;
+    border: none;
+    border-radius: 3px;
+    padding: 0.5em 1em;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+#output .problem-interactive button:hover {
+    background-color: #45a049; /* ホバー時のボタン背景色 */
+}
+
+#output .problem-interactive button:disabled {
+    background-color: #ccc;
+    color: #666;
+    cursor: not-allowed;
+}
+
+#output .problem-result {
+    margin-left: 0.5em;
+    font-weight: bold;
+    min-width: 80px;
+}
+
+#output .wait-gate-result.result-correct { color: green; }
+#output .wait-gate-result.result-incorrect { color: red; }
+#output .wait-gate-result.result-empty { color: orange; }
+
+/* --- H3のスタイル (generic-h3) --- */
+#output h3 { 
+    font-size: 1.3em;
+    color: #222; 
+    padding: 0.5em;
+    margin-top: 1.2em;
+    margin-left: 10px; 
+    margin-bottom: 0.7em;
+    border-radius: 0px;
+    border-left: 10px solid #ddd; 
+    border-bottom: 2px solid #ddd; 
+    background-color: transparent;
+}
+
+/* --- 表示/非表示制御用セクションのスタイル --- */
+.revealable-section {
+    display: none; 
+}
+
+.revealable-section.revealed {
+    display: block; 
+}
+
+/* --- Pタグのスタイル --- */
+#output p {
+    padding-left: 1em;
+    margin-bottom: 1em;
+    font-size: 1rem;
+    color: #222;
+}
+
+/* === フローティングスコアカウンターのスタイル === */
+#score-counter {
+    position: fixed; /* 画面に固定 */
+    bottom: 20px;    /* 下から20px */
+    right: 20px;     /* 右から20px */
+    padding: 10px 15px;
+    background-color: rgba(0, 0, 0, 0.75); /* 半透明の黒背景 */
+    color: #fff;         /* 白い文字 */
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    z-index: 1000;     /* 他の要素より手前に表示 */
+    font-size: 0.9em;
+    opacity: 0.9;      /* 少し透明にする (任意) */
+    transition: opacity 0.3s;
+    cursor: pointer;
+}
+
+#score-counter:hover {
+    opacity: 1; /* ホバー時は不透明に (任意) */
+}
+
+#score-counter span {
+    font-weight: bold;
+}
+
+#score-counter:hover {
+    opacity: 1;
+}
+
+#score-counter span {
+    font-weight: bold;
+}
+
+/* === フッター内のデータ削除確認メッセージ用スタイル === */
+#clear-storage-confirm-area {
+    margin-top: 15px;
+    padding: 12px;
+    background-color: #fff0f0; /* 薄い赤系の背景 */
+    border: 1px solid #ffcccc;
+    border-radius: 4px;
+    color: #333; /* メッセージの文字色 */
+    text-align: center;
+    font-size: 0.95em;
+}
+
+#clear-storage-confirm-area p { /* メッセージ文言用のpタグ */
+    margin: 0 0 10px 0;
+}
+
+#clear-storage-confirm-area button {
+    margin: 0 5px;
+    padding: 6px 12px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+#clear-storage-confirm-area button#execute-clear-storage {
+    background-color: #d9534f; /* 赤系ボタン */
+    color: white;
+    border-color: #d43f3a;
+}
+#clear-storage-confirm-area button#execute-clear-storage:hover {
+    background-color: #c9302c;
+}
+
+#clear-storage-confirm-area button#cancel-clear-storage {
+    background-color: #f0f0f0;
+}
+#clear-storage-confirm-area button#cancel-clear-storage:hover {
+    background-color: #e0e0e0;
+}
+
+/* --- 待機ポイント (#wt) のスタイル --- */
+#output h2.wait-gate-title {
+    font-size: 1.6em;
+    color: #222;
+    background-color: #f0f0f0; /* 例: グレー系の背景 */
+    padding: 0.5em;
+    margin-top: 1.5em;
+    margin-left: 0px;
+    margin-bottom: 0.7em;
+    border-left: 10px solid #999; /* グレー系の左ボーダー */
+    border-bottom: none; 
+    border-radius: 4px;
+}
+
+#output .wait-gate-container {
+    margin-top: 0.5em;
+    margin-bottom: 1.5em;
+    padding: 1em;
+    border: 1px solid #ccc; 
+    border-radius: 5px;
+    background-color: #f9f9f9; 
+}
+
+#output .wait-gate-interactive {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+}
+
+#output .wait-gate-interactive label {
+    font-weight: bold;
+    color: #222;
+}
+
+#output .wait-gate-interactive input[type="password"] {
+    padding: 0.5em;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    flex-grow: 1;
+    min-width: 100px;
+}
+
+#output .wait-gate-interactive input[type="password"]:disabled,
+#output .wait-gate-interactive button:disabled {
+    background-color: #e9e9e9;
+    color: #757575;
+    cursor: not-allowed;
+}
+
+#output .wait-gate-interactive button {
+    background-color: #6c757d; /* グレー系のボタン */
+    color: white;
+    border: none;
+    border-radius: 3px;
+    padding: 0.5em 1em;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+#output .wait-gate-interactive button:hover {
+    background-color: #5a6268;
+}
+
+#output .wait-gate-result {
+    margin-left: 0.5em;
+    font-weight: bold;
+    min-width: 120px; /* メッセージ用に少し広め */
+}
+
+/* ★ #wt の本文表示エリアのスタイルを追加 */
+#output .wait-gate-body {
+    margin-bottom: 1em; /* インタラクティブ要素との間に余白 */
+    padding: 0.5em;     /* 内側の余白 */
+    line-height: 1.6;
+    color: #222;
+    background-color: #fdfdfd; /* 本文エリアが少し分かるように非常に薄い背景（任意） */
+    border-top: 1px dashed #eee; /* タイトルと本文の間に区切り（任意） */
+    border-bottom: 1px dashed #eee; /* 本文とインタラクティブ要素の間に区切り（任意） */
+    margin-top: 0.5em; /* タイトルとの間に少し余白 */
+}
+
+/* --- インラインコードのスタイル (@cd{}) --- */
+/* 色を変更したいなら prismの公式サイトとかに載ってるテーマごとにHTML内の link を変更*/
+#output code[class*="language-"]:not(pre code) { 
+    padding: 0.2em 0.4em;
+    margin: 0 0em;
+    font-size: 85%; /* 周囲のテキストより少し小さく */
+    border-radius: 5px; 
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; /* 等幅フォント */
+}
+
+
+/* --- コードブロックのスタイル --- */
+#output .code-block-wrapper {
+    margin: 1.5em 3em;
+    padding: 0.2em; /* 内側の余白 */
+    border-radius: 2px; /* Wrapperの角丸 */
+    /* Prismテーマがpreに影などを付ける場合、wrapperのbox-shadowは不要かも */
+    box-shadow: 0 1px 3px rgba(0,0,0,0.5); 
+}
+
+/* Prism.jsのテーマがpreとcodeのスタイルを主に担当するため、 */
+/* ここでの指定は最小限にするか、テーマとの調和を考慮します。 */
+#output .code-block-wrapper pre[class*="language-"].line-numbers { /* Prismが行番号用にクラスを追加することがある */
+    margin: 0.5em 0.5em; /* preのデフォルトマージンをリセット */
+    border: 1px solid #dddddd; /* pre自体に枠線が必要な場合 */
+    border-radius: 4px; /* preの角丸 */
+    font-size: 1.0em; /* 好みに応じて調整 */
+    line-height: 1em;
+    /* Prismテーマで背景色や文字色が設定されるので、ここでは指定しないか、上書きする場合のみ */
+}
+
+#output .code-block-wrapper code[class*="language-"] {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+    font-size: 1.0em; /* 好みに応じて調整 */
+    padding-top: 0.175em; /* 上下のパディングを追加 */
+    padding-bottom: 0.1em; /* 上下のパディングを追加 */
+    line-height: 1.5em;
+    /* Prismテーマによって文字色、背景色などが設定されます */
+}
