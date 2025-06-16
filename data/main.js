@@ -14,6 +14,10 @@ const mathPlaceholders   = new Map(); // DOMContentLoaded内でクリア/使用
 const rawCodeSnippets    = new Map(); // コードスニペット保存用 Map を追加
 let rawCodeSnippetIndex  = 0;         // コードスニペット用インデックス
 
+const BASE_COOLDOWN_MS = 10000; //最初のクールダウン時間(10 秒),
+const COOLDOWN_INCREMENT_MS = 5000; //スキップごとに追加される時間(5 秒)
+
+
 function checkWaitCondition(buttonElement)
 {
     const waitId = buttonElement.dataset.waitId;
@@ -112,6 +116,81 @@ function handleWaitInputEnter(event)
             checkWaitCondition(buttonElement);
         }
     }
+}
+
+// 問題スキップ用関数
+function skipProblem(buttonElement) {
+    const currentCooldown = BASE_COOLDOWN_MS + (getSkipCount() * COOLDOWN_INCREMENT_MS);
+    const cooldownInSeconds = Math.round(currentCooldown / 1000);
+    
+    // 1. 確認メッセージを表示
+    //    ユーザーが「キャンセル」を選択した場合は、以降の処理を行いません。
+    if (!window.confirm(`本当にこの問題をスキップしますか？\n（次にスキップ可能になるまで約${cooldownInSeconds}秒かかります）`)) {
+        return;
+    }
+    incrementSkipCount();
+
+    const problemId = buttonElement.dataset.problemId;
+
+    // 関連するDOM要素を取得
+    const userInputElement = document.getElementById(`problem-input-${problemId}`);
+    const resultDisplayElement = document.getElementById(`problem-result-${problemId}`);
+    const sectionToReveal = document.getElementById(`reveal-after-problem-${problemId}`);
+    const checkButton = document.querySelector(`button[data-problem-id="${problemId}"][onclick="checkProblemAnswer(this)"]`);
+    
+    if (!resultDisplayElement) { return; }
+
+    // 「判定」ボタンのdata-answers属性から正解文字列を取得。
+    const answersString = checkButton.dataset.answers;
+    if (answersString) {
+        // カンマで区切られた正解の中から、最初のものを取得。
+        const firstAnswer = answersString.split(',')[0].trim();
+        // 解答欄(input)に最初の正解を表示します。
+        if (userInputElement) {
+            userInputElement.value = firstAnswer;
+        }
+    }
+    
+    // スキップ処理の本体
+    if (sectionToReveal) {
+        sectionToReveal.classList.add('revealed');
+    }
+    resultDisplayElement.textContent = "この問題はスキップしました。";
+    resultDisplayElement.className = 'problem-result result-skipped'; 
+    
+
+    if (userInputElement) {
+        userInputElement.disabled = true;
+    }
+    if (checkButton) {
+        checkButton.disabled = true;
+    }
+    
+    // 進捗を保存
+    saveProgress();
+
+    // 2. クールダウン処理10秒→12秒→...と伸びる
+    //    まず、ページ内にあるすべての「諦めて飛ばす」ボタンを無効化します。
+    const allSkipButtons = document.querySelectorAll('.skip-button');
+    allSkipButtons.forEach(btn => {
+        btn.disabled = true;
+    });
+
+    // 10秒後にタイマーを設定し、未解決の問題のボタンだけを再度有効にします。
+    setTimeout(() => {
+        document.querySelectorAll('.skip-button').forEach(btn => {
+            const pid = btn.dataset.problemId;
+            const correspondingCheckButton = document.querySelector(`button[data-problem-id="${pid}"][onclick="checkProblemAnswer(this)"]`);
+            
+            // 対応する「判定」ボタンがまだ無効化されていない（＝問題が未解決）場合のみ、
+            // 「諦めて飛ばす」ボタンを再度有効にします。
+            if (correspondingCheckButton && !correspondingCheckButton.disabled) {
+                btn.disabled = false;
+            }
+        });
+        const nextCooldownInSeconds = Math.round((BASE_COOLDOWN_MS + (getSkipCount() * COOLDOWN_INCREMENT_MS)) / 1000);
+        console.log(`スキップ機能のクールダウンが終了しました。次の待機時間は${nextCooldownInSeconds}秒です。`); 
+    }, currentCooldown);
 }
 
 // --- 回答判定関数 ---
@@ -237,6 +316,7 @@ document.addEventListener('DOMContentLoaded', () =>
                             <label for="problem-input-${problemId}">回答: </label>
                             <input type="text" id="problem-input-${problemId}" name="problem-input-${problemId}">
                             <button data-problem-id="${problemId}" data-answers="${answers}" onclick="checkProblemAnswer(this)">判定</button>
+                            <button data-problem-id="${problemId}" onclick="skipProblem(this)" class="skip-button">諦めて飛ばす</button>
                             <span id="problem-result-${problemId}" class="problem-result"></span>
                         </div>
                     </div>`;
