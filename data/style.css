@@ -117,6 +117,31 @@ footer { /* ページフッター用 */
     border-radius: 4px;     /* 他の特別なH2と角丸の値を統一 */
 }
 
+/* 「諦めて飛ばす」ボタンのスタイル */
+.problem-interactive .skip-button {
+    margin-left: 8px; /* 「判定」ボタンとの間隔 */
+    background-color: #757575; /* グレー系の色 */
+    color: white;
+    border: 1px solid #616161;
+    padding: 2px 8px;
+    cursor: pointer;
+}
+
+.problem-interactive .skip-button:hover:not([disabled]) {
+    background-color: #8a8a8a;
+}
+
+.problem-interactive .skip-button[disabled] {
+    background-color: #bdbdbd;
+    cursor: not-allowed;
+}
+
+/* スキップされた問題の結果表示スタイル */
+.problem-result.result-skipped {
+    color: #666; /* 落ち着いた色 */
+    font-style: italic;
+}
+
 #output .problem-container { /* 問題内容のコンテナ */
     margin-top: 0.5em; /* h2.problem との間に少し余白 */
     margin-bottom: 1.5em;
