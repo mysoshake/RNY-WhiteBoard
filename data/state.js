@@ -1,4 +1,4 @@
-// RnyState.js
+// state.js
 
 // --- 定数 ---
 const STORAGE_KEY_PREFIX = 'ProgramRnyKey_';

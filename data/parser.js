@@ -1,4 +1,4 @@
-// RnyParser.js
+// parser.js
 
 const DEBUG_MODE = true; // デバッグモードを有効にするかどうか
 
