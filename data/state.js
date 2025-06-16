@@ -8,6 +8,7 @@ const SCORE_CLICK_THRESHOLD = 7;
 let scoreAreaClickCount = 0;
 let correctProblemsCount = 0;
 let totalProblemsCount = 0;
+let skipCount = 0;
 const inlineCodePlaceholders = new Map(); // sインラインコード用
 
 function getStorageKey() {
@@ -43,9 +44,17 @@ function resetScoreAndProblems() {
     correctProblemsCount = 0;
     totalProblemsCount = 0; // 全問題数もリセットする場合
     scoreAreaClickCount = 0;
+    skipCount = 0;
     updateScoreDisplay();
 }
 
+function getSkipCount() {
+    return skipCount;
+}
+
+function incrementSkipCount() {
+    skipCount++;
+}
 
 // --- UI更新 ---
 // この関数はDOM要素にアクセスするため、DOM構築後に呼び出す必要があります。
@@ -97,6 +106,7 @@ function saveProgress() {
     const appData = {
         correctProblemsCount: correctProblemsCount,
         totalProblemsCount: totalProblemsCount,
+        skipCount: skipCount,
         problemStates: problemStates,
         waitStates: waitStates,
         revealedSections: revealedSectionsData
@@ -112,6 +122,7 @@ function loadProgress() {
     const savedDataString = localStorage.getItem(getStorageKey());
     if (!savedDataString) {
         correctProblemsCount = 0; // 状態変数も初期化
+        skipCount = 0;
         // totalProblemsCount は通常、コンテンツ解析時に設定されるので、ここでは0のまま
         updateScoreDisplay();
         return;
@@ -123,6 +134,7 @@ function loadProgress() {
         // ここでは読み込まないか、読み込んでも後で上書きされることを想定します。
         // もし保存された値を使いたいなら:
         // totalProblemsCount = appData.totalProblemsCount || 0;
+        skipCount = appData.skipCount || 0;
 
         if (appData.problemStates) {
             for (const problemId in appData.problemStates) {
@@ -178,6 +190,7 @@ function loadProgress() {
     } catch (e) {
         console.error("ローカルストレージからの読み込みまたは解析に失敗しました:", e);
         correctProblemsCount = 0;
+        skipCount = 0;
         updateScoreDisplay();
     }
 }
