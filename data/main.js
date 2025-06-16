@@ -137,7 +137,7 @@ function skipProblem(buttonElement) {
     const resultDisplayElement = document.getElementById(`problem-result-${problemId}`);
     const sectionToReveal = document.getElementById(`reveal-after-problem-${problemId}`);
     const checkButton = document.querySelector(`button[data-problem-id="${problemId}"][onclick="checkProblemAnswer(this)"]`);
-    
+
     if (!resultDisplayElement) { return; }
 
     // 「判定」ボタンのdata-answers属性から正解文字列を取得。
@@ -203,6 +203,8 @@ function checkProblemAnswer(buttonElement)
     if (!userInputElement || !resultDisplayElement) { return; }
     const userAnswer = userInputElement.value.trim();
     const correctAnswers = answersString.split(',').map(ans => ans.trim());
+    const skipButton = document.querySelector(`.problem-interactive button.skip-button[data-problem-id="${problemId}"]`);
+    
     resultDisplayElement.classList.remove('result-correct', 'result-incorrect', 'result-empty');
     if (userAnswer === "")
     {
@@ -225,6 +227,10 @@ function checkProblemAnswer(buttonElement)
         }
         buttonElement.disabled = true;
         userInputElement.disabled = true;
+        if (skipButton) {
+            skipButton.disabled = true;
+        }
+        
     } else
     {
         resultDisplayElement.textContent = "不正解です。";
