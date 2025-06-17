@@ -116,7 +116,43 @@ footer { /* ページフッター用 */
     border-bottom: none;    /* 他の特別なH2と同様に、基本の下線を解除 */
     border-radius: 4px;     /* 他の特別なH2と角丸の値を統一 */
 }
+/* 「判定」「諦めて飛ばす」両ボタンの共通スタイル */
+#output .problem-interactive button {
+    color: white;
+    border: none;
+    border-radius: 3px;
+    padding: 0.5em 1em;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
 
+/* 「判定」ボタンの個別スタイル */
+#output .problem-interactive button:not(.skip-button) {
+    background-color: #4CAF50; /* 緑色 */
+}
+
+/* 「諦めて飛ばす」ボタンの個別スタイル */
+#output .problem-interactive button.skip-button {
+    background-color: #757575; /* 灰色 */
+    margin-left: 8px;
+}
+
+/* ホバー時のスタイル（無効化されていないボタンのみ） */
+#output .problem-interactive button:not(.skip-button):not(:disabled):hover {
+    background-color: #45a049;
+}
+#output .problem-interactive button.skip-button:not(:disabled):hover {
+    background-color: #8a8a8a;
+}
+
+/* ★最重要：無効化された全てのボタンに適用されるスタイル */
+#output .problem-interactive button:disabled,
+#output .problem-interactive button[disabled] {
+    background-color: #ccc !important; /* どんなスタイルよりも優先して灰色に */
+    color: #666 !important;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
 /* 「諦めて飛ばす」ボタンのスタイル */
 .problem-interactive .skip-button {
     margin-left: 8px; /* 「判定」ボタンとの間隔 */
@@ -131,6 +167,7 @@ footer { /* ページフッター用 */
     background-color: #8a8a8a;
 }
 
+.problem-interactive .skip-button:disabled 
 .problem-interactive .skip-button[disabled] {
     background-color: #bdbdbd;
     cursor: not-allowed;
