@@ -118,7 +118,8 @@ function saveProgress() {
     }
 }
 
-function loadProgress() {
+function loadProgress()
+{
     const savedDataString = localStorage.getItem(getStorageKey());
     if (!savedDataString) {
         correctProblemsCount = 0; // 状態変数も初期化
@@ -141,16 +142,16 @@ function loadProgress() {
                 const state = appData.problemStates[problemId];
                 const inputEl = document.getElementById(`problem-input-${problemId}`);
                 const buttonEl = document.querySelector(`button[data-problem-id="${problemId}"]`);
-                const skipEl = document.querySelector(`.problem-interactive button.skip-button[data-problem-id="${problemId}"]`);
+                const skipButtonEl = document.querySelector(`.problem-interactive button.skip-button[data-problem-id="${problemId}"]`);
                 const resultEl = document.getElementById(`problem-result-${problemId}`);
                 if (inputEl)
                 {
                     inputEl.value = state.lastAnswer || '';
                     if (state.solved) inputEl.disabled = true;
                 }
-                if (skipEl && (state.solved))
+                if (skipButtonEl)
                 {
-                    skipEl.disabled = true;
+                    skipButtonEl.disabled = true;
                 }
                 if (buttonEl && state.solved)
                 {
