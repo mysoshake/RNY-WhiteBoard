@@ -1,5 +1,6 @@
 // state.js
 
+
 // --- 定数 ---
 const STORAGE_KEY_PREFIX = 'ProgramRnyKey_';
 const SCORE_CLICK_THRESHOLD = 7;
