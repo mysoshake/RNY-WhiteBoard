@@ -147,15 +147,12 @@ function loadProgress()
                 if (inputEl)
                 {
                     inputEl.value = state.lastAnswer || '';
-                    if (state.solved) inputEl.disabled = true;
                 }
-                if (skipButtonEl)
+                if(state.solved)
                 {
-                    skipButtonEl.disabled = true;
-                }
-                if (buttonEl && state.solved)
-                {
-                    buttonEl.disabled = true;
+                    if (inputEl) inputEl.disabled = true;
+                    if (skipButtonEl) skipButtonEl.disabled = true;
+                    if (buttonEl) buttonEl.disabled = true;
                 }
                 if (resultEl) {
                     resultEl.textContent = state.resultText || '';

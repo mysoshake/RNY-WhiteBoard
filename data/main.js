@@ -82,6 +82,7 @@ function checkWaitCondition(buttonElement)
         // ボタンと入力フィールドを無効化 (あれば)
         buttonElement.disabled = true;
         const inputElement = document.getElementById(`wait-input-${waitId}`);
+        
         if (inputElement)
         {
             inputElement.disabled = true;
@@ -201,9 +202,9 @@ function checkProblemAnswer(buttonElement)
     const userInputElement = document.getElementById(`problem-input-${problemId}`);
     const resultDisplayElement = document.getElementById(`problem-result-${problemId}`);
     if (!userInputElement || !resultDisplayElement) { return; }
+    const skipButton = buttonElement.nextElementSibling;
     const userAnswer = userInputElement.value.trim();
     const correctAnswers = answersString.split(',').map(ans => ans.trim());
-    const skipButton = document.querySelector(`.problem-interactive button.skip-button[data-problem-id="${problemId}"]`);
     
     resultDisplayElement.classList.remove('result-correct', 'result-incorrect', 'result-empty');
     if (userAnswer === "")
@@ -225,13 +226,18 @@ function checkProblemAnswer(buttonElement)
         {
             sectionToReveal.classList.add('revealed');
         }
+
+       // 全ての関連ボタンを無効化
         buttonElement.disabled = true;
         userInputElement.disabled = true;
-        if (skipButton) {
+
+        // スキップボタンが存在し、かつそれが本当にスキップボタンであれば無効化
+        if (skipButton && skipButton.classList.contains('skip-button')) {
             skipButton.disabled = true;
         }
         
-    } else
+    }
+    else
     {
         resultDisplayElement.textContent = "不正解です。";
         resultDisplayElement.classList.add('result-incorrect');
