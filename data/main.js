@@ -1,4 +1,5 @@
 // main.js
+console.log("main.js version: 2025-06-17 18:10 JST");
 
 // HTMLエスケープ用ヘルパー関数
 function escapeHtml(unsafeText)
