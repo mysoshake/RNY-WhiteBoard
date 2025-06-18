@@ -17,6 +17,95 @@ let rawCodeSnippetIndex  = 0;         // コードスニペット用インデッ
 const BASE_COOLDOWN_MS = 10000; //最初のクールダウン時間(10 秒),
 const COOLDOWN_INCREMENT_MS = 5000; //スキップごとに追加される時間(5 秒)
 
+// ページ全体のコンテンツ表示状態を更新する関数
+function updateContentVisibility()
+{
+    console.log("--- 表示状態の更新を開始 ---");
+    
+    // 最初の未解決ゲートを見つけ、それ以降のゲートとコンテンツをすべて非表示にする
+    let everythingAfterShouldBeHidden = false;
+    const allGateHeaders = document.querySelectorAll('#output > h2.problem, #output > h2.wait-gate-title');
+
+    allGateHeaders.forEach((gateHeader, index) => {
+        const gateContainer = gateHeader.nextElementSibling;
+        const revealSection = gateContainer ? gateContainer.nextElementSibling : null; 
+
+        console.log(`\n[${index + 1}番目のゲート] "${gateHeader.textContent.trim()}" を処理中`);
+        console.log(`  チェック前の状態: everythingAfterShouldBeHidden = ${everythingAfterShouldBeHidden}`);
+
+        if (everythingAfterShouldBeHidden)
+        {
+            // 「最初の未解決ゲート」より後にある要素は、すべて非表示にする
+            console.log("  アクション: このゲート以降なので「非表示」にします。");
+            gateHeader.style.display = 'none';
+            if (gateContainer) gateContainer.style.display = 'none';
+            if (revealSection && revealSection.classList.contains('revealable-section')) {
+                revealSection.classList.remove('revealed');
+            }
+        }
+        else
+        {
+            // 「最初の未解決ゲート」より前にある要素は、すべて表示する
+            console.log("  アクション: このゲートを「表示」します。");
+            gateHeader.style.display = '';
+            if (gateContainer) gateContainer.style.display = '';
+
+
+            // このゲートが解決済みかチェックする
+           let isSolved = true; // デフォルトは解決済みと見なす
+            
+            if (gateContainer) { // コンテナが存在する場合のみチェック
+                const gateType = gateHeader.matches('.problem') ? 'problem' : 'wait';
+                const problemIdMatch = gateHeader.textContent.match(/問題 (\d+):/);
+                const gateId = (gateType === 'problem' && problemIdMatch) ? problemIdMatch[1] : gateHeader.dataset.waitId;
+                
+                let checkButton;
+                if (gateId)
+                {
+                    // 各ゲートのコンテナの中から、対応するボタンを探す
+                    if (gateType === 'problem')
+                    {
+                        checkButton = gateContainer.querySelector(`button[data-problem-id="${gateId}"][onclick="checkProblemAnswer(this)"]`);
+                    }
+                    else if(gateType == 'wait') // wait
+                    {
+                        checkButton = gateContainer.querySelector(`button[data-wait-id="${gateId}"][onclick="checkWaitCondition(this)"]`);
+                    }
+                    else
+                    {
+                        console.log(`Unknown gate type: ${gateType}`)
+                    }
+                }
+                // ボタンが見つかり、かつdisabledでなければ「未解決」
+                if (checkButton && !checkButton.disabled) {
+                    isSolved = false;
+                }
+            }
+
+            console.log(`  このゲートは解決済みか？ -> ${isSolved}`);
+
+            if (isSolved)
+            {
+                // このゲートが解決済みなら、後続のコンテンツを表示する
+                console.log("  結果: 解決済みなので、後続のコンテンツを表示します。");
+                if (revealSection && revealSection.classList.contains('revealable-section')) {
+                    revealSection.classList.add('revealed');
+                }
+            }
+            else
+            {
+                console.log("  結果: これが最初の未解決ゲートです。これ以降の全要素を非表示にするように設定します。");
+                // これが最初の未解決ゲート。これ以降のループでは全てを非表示にする
+                everythingAfterShouldBeHidden = true;
+                // このゲート自身の後続コンテンツは非表示のままにする
+                if (revealSection && revealSection.classList.contains('revealable-section')) {
+                    revealSection.classList.remove('revealed');
+                }
+            }
+        }
+    });
+    console.log("\n--- 表示状態の更新を終了 ---");
+}
 
 function checkWaitCondition(buttonElement)
 {
@@ -72,13 +161,7 @@ function checkWaitCondition(buttonElement)
             resultDisplayElement.textContent = "解除されました。";
             resultDisplayElement.className = 'wait-gate-result result-correct';
         }
-        // 後続のコンテンツを表示 (問題(#pb)と同じID体系とクラス名を使う)
-        const sectionToReveal = document.getElementById(`reveal-after-wait-${waitId}`); // ★ID名を変更
-        if (sectionToReveal)
-        {
-            sectionToReveal.classList.add('revealed');
-        }
-    
+        
         // ボタンと入力フィールドを無効化 (あれば)
         buttonElement.disabled = true;
         const inputElement = document.getElementById(`wait-input-${waitId}`);
@@ -87,7 +170,9 @@ function checkWaitCondition(buttonElement)
         {
             inputElement.disabled = true;
         }
-        saveProgress(); // ★ 進行状況を保存
+        saveProgress(); // 進行状況を保存
+        updateContentVisibility(); // 表示更新
+        
     }
 }
 
@@ -120,7 +205,8 @@ function handleWaitInputEnter(event)
 }
 
 // 問題スキップ用関数
-function skipProblem(buttonElement) {
+function skipProblem(buttonElement)
+{
     const currentCooldown = BASE_COOLDOWN_MS + (getSkipCount() * COOLDOWN_INCREMENT_MS);
     const cooldownInSeconds = Math.round(currentCooldown / 1000);
     
@@ -153,9 +239,6 @@ function skipProblem(buttonElement) {
     }
     
     // スキップ処理の本体
-    if (sectionToReveal) {
-        sectionToReveal.classList.add('revealed');
-    }
     resultDisplayElement.textContent = "この問題はスキップしました。";
     resultDisplayElement.className = 'problem-result result-skipped'; 
     
@@ -167,9 +250,10 @@ function skipProblem(buttonElement) {
         checkButton.disabled = true;
     }
     
-    // 進捗を保存
-    saveProgress();
-
+    
+    saveProgress(); // 進捗を保存
+    updateContentVisibility(); // 表示更新
+    
     // 2. クールダウン処理10秒→12秒→...と伸びる
     //    まず、ページ内にあるすべての「諦めて飛ばす」ボタンを無効化します。
     const allSkipButtons = document.querySelectorAll('.skip-button');
@@ -221,11 +305,6 @@ function checkProblemAnswer(buttonElement)
         if (!wasAlreadySolved) { // まだ解かれていなかった場合のみカウントアップ
             incrementCorrectProblemsCount(); // 正解数をインクリメント
         }
-        const sectionToReveal = document.getElementById(`reveal-after-problem-${problemId}`);
-        if (sectionToReveal)
-        {
-            sectionToReveal.classList.add('revealed');
-        }
 
        // 全ての関連ボタンを無効化
         buttonElement.disabled = true;
@@ -242,8 +321,9 @@ function checkProblemAnswer(buttonElement)
         resultDisplayElement.textContent = "不正解です。";
         resultDisplayElement.classList.add('result-incorrect');
     }
-    updateScoreDisplay(); // スコア表示を更新
-    saveProgress();       // 状態を保存
+    updateScoreDisplay();      // スコア表示を更新
+    saveProgress();            // 状態を保存
+    updateContentVisibility(); // 非表示だった問題を表示
 }
 
 
@@ -631,6 +711,7 @@ document.addEventListener('DOMContentLoaded', () =>
     
         loadProgress();
         updateScoreDisplay();
+        updateContentVisibility(); // 表示更新
         
         // --- 各問題の解答入力欄にEnterキーのイベントリスナーを登録 ---
         const problemInputs = outputElement.querySelectorAll('.problem-interactive input[type="text"]');
