@@ -576,66 +576,54 @@ document.addEventListener('DOMContentLoaded', () =>
         // --- ステップ6: DOM構造の変更とセクションの非表示化処理 (変更なし) ---
         const originalChildren = Array.from(outputElement.children);
         const newContentFragment = document.createDocumentFragment();
-        let currentParentNodeForContent = newContentFragment;
+        let currentWrapper = newContentFragment; // コンテンツを追加していく現在の親要素
+
         for (let i = 0; i < originalChildren.length; i++)
         {
             const child = originalChildren[i];
-            let isGateHeader = false;
-            let gateType = ''; // 'problem' or 'wait'
-            let gateId = null;
-            if (child.matches('h2.problem'))
+            
+            // 現在の要素が「問題」か「待機」の区切り（ゲート）か判定
+            if (child.matches('h2.problem') || child.matches('h2.wait-gate-title'))
             {
-                isGateHeader = true;
-                gateType = 'problem';
-                const problemIdText = child.textContent.match(/問題 (\d+):/);
-                if (problemIdText && problemIdText[1]) gateId = problemIdText[1];
-            } else if (child.matches('h2.wait-gate-title')) { // ★ #wt のタイトルを検出
-                isGateHeader = true;
-                gateType = 'wait';
-                // #wt のタイトルからIDを抽出する必要がある (現在は連番のみ)
-                // JavaScriptで h2.wait-gate-title を生成する際にデータ属性などでIDを埋め込むか、
-                // もしくは #wt も連番タイトルにするなら、それを抽出する
-                // 簡単のため、counters.wait を使って生成されたIDを想定 (例: "待機ポイント 1: タイトル")
-                // 仮にタイトルに "待機ポイント X:" が入ると仮定
-                const waitIdText = child.textContent.match(/ (\d+):/); // タイトル末尾の番号をIDとする (要調整)
-                                                                        // もしくは、data-wait-gate-id属性をh2に付与する
-                                                                        // JavaScriptの #wt のreplacementで <h2 class="wait-gate-title" data-gate-id="${currentWaitId}">
-                                                                        // としておけば、 child.dataset.gateId で取れる
-                // 今回は、JavaScriptの #wt の replacement で生成される h2 に data-wait-gate-id を付与する前提とする
-                // (後述の #wt の replacement 関数の修正が必要)
-                if (child.dataset.waitId) { // data-wait-id をh2に付与する修正を想定
+                
+                const gateType = child.matches('h2.problem') ? 'problem' : 'wait';
+                let gateId = null;
+                if (gateType === 'problem')
+                {
+                    const match = child.textContent.match(/問題 (\d+):/);
+                    if(match) gateId = match[1];
+                }
+                else // wait
+                { 
                     gateId = child.dataset.waitId;
-                } else { // フォールバックとしてタイトルから抽出を試みる (要調整)
-                    const tempIdMatch = child.textContent.match(/\s(\d+):/); // "タイトル 1:" のような形式を仮定
-                    if(tempIdMatch && tempIdMatch[1]) gateId = tempIdMatch[1];
                 }
-            }
-            if (isGateHeader)
-            {
-                currentParentNodeForContent.appendChild(child); // タイトルを追加
-                const expectedContainerClass = gateType === 'problem' ? 'div.problem-container' : 'div.wait-gate-container';
-                if (i + 1 < originalChildren.length && originalChildren[i+1].matches(expectedContainerClass))
-                {
+
+                // 1. ゲートのヘッダー（h2）自体は、常に最上位に追加する
+                newContentFragment.appendChild(child);
+
+                // 2. ゲートの本体（div.problem-containerなど）も、最上位に追加する
+                const expectedContainerClass = gateType === 'problem' ? '.problem-container' : '.wait-gate-container';
+                if (i + 1 < originalChildren.length && originalChildren[i+1].matches(expectedContainerClass)) {
                     const gateContainer = originalChildren[++i];
-                    currentParentNodeForContent.appendChild(gateContainer);
-                    if (gateId)
-                    {
-                        const revealSection = document.createElement('div');
-                        revealSection.id = `reveal-after-${gateType}-${gateId}`; // IDにタイプを含める
-                        revealSection.className = 'revealable-section';
-                        currentParentNodeForContent.appendChild(revealSection);
-                        currentParentNodeForContent = revealSection;
-                    } else
-                    {
-                        console.warn(`${gateType} タイトルからIDを抽出できませんでした:`, child.textContent);
-                    }
-                } else
-                {
-                    console.warn(`h2.${gateType === 'problem' ? 'problem' : 'wait-gate-title'} の直後に ${expectedContainerClass} が見つかりませんでした:`, child);
+                    newContentFragment.appendChild(gateContainer);
+                } else {
+                     console.warn(`ゲートのヘッダーに対応するコンテナが見つかりませんでした。`, child);
                 }
-            } else
-            {
-                currentParentNodeForContent.appendChild(child);
+
+                // 3. このゲートの後に続くコンテンツを格納するための新しいラッパー（div）を作成し、最上位に追加
+                if (gateId) {
+                    const revealSection = document.createElement('div');
+                    revealSection.id = `reveal-after-${gateType}-${gateId}`;
+                    revealSection.className = 'revealable-section';
+                    newContentFragment.appendChild(revealSection);
+                    
+                    // これ以降に見つかる「通常のコンテンツ」は、この新しいラッパーの中に入れる
+                    currentWrapper = revealSection;
+                }
+
+            } else {
+                // ゲート以外の通常のコンテンツは、現在のラッパーに追加する
+                currentWrapper.appendChild(child);
             }
         }
         outputElement.innerHTML = '';
