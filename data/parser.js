@@ -158,7 +158,7 @@ function renderASTtoHTML(astNodes) {
             case "rb":
                 return `<ruby>${renderASTtoHTML(node.base)}<rt>${renderASTtoHTML(node.ruby)}</rt></ruby>`;
             case "rf":
-                return `<a href="${node.link}">${renderASTtoHTML(node.content)}</a>`;
+                return `<a href="${node.link}" target="_blank" rel="noopener noreferrer">${renderASTtoHTML(node.content)}</a>`;
             case "cd":
                 const lang = node.attributes && node.attributes.language ? escapeHtml(node.attributes.language) : '';
                 // node.content は [{ type: "text", value: "code" }] の形を想定
