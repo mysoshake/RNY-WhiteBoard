@@ -1,5 +1,14 @@
 // main_s.js
 
+// --- グローバル変数 ---
+const mathPlaceholders   = new Map(); // DOMContentLoaded内でクリア/使用
+const rawCodeSnippets    = new Map(); // コードスニペット保存用 Map を追加
+let rawCodeSnippetIndex  = 0;         // コードスニペット用インデックス
+let currentMagicPrefix = "rny_answer::";
+
+const BASE_COOLDOWN_MS = 10000; //最初のクールダウン時間(10 秒),
+const COOLDOWN_INCREMENT_MS = 5000; //スキップごとに追加される時間(5 秒)
+
 // HTMLエスケープ用ヘルパー関数
 function escapeHtml(unsafeText)
 {
@@ -8,14 +17,6 @@ function escapeHtml(unsafeText)
     div.textContent = unsafeText;
     return div.innerHTML;
 }
-
-// --- グローバル変数 ---
-const mathPlaceholders   = new Map(); // DOMContentLoaded内でクリア/使用
-const rawCodeSnippets    = new Map(); // コードスニペット保存用 Map を追加
-let rawCodeSnippetIndex  = 0;         // コードスニペット用インデックス
-
-const BASE_COOLDOWN_MS = 10000; //最初のクールダウン時間(10 秒),
-const COOLDOWN_INCREMENT_MS = 5000; //スキップごとに追加される時間(5 秒)
 
 // ページ全体のコンテンツ表示状態を更新する関数
 function updateContentVisibility()
@@ -30,13 +31,13 @@ function updateContentVisibility()
         const gateContainer = gateHeader.nextElementSibling;
         const revealSection = gateContainer ? gateContainer.nextElementSibling : null; 
 
-        console.log(`\n[${index + 1}番目のゲート] "${gateHeader.textContent.trim()}" を処理中`);
-        console.log(`  チェック前の状態: everythingAfterShouldBeHidden = ${everythingAfterShouldBeHidden}`);
+        // console.log(`\n[${index + 1}番目のゲート] "${gateHeader.textContent.trim()}" を処理中`);
+        // console.log(`  チェック前の状態: everythingAfterShouldBeHidden = ${everythingAfterShouldBeHidden}`);
 
         if (everythingAfterShouldBeHidden)
         {
             // 「最初の未解決ゲート」より後にある要素は、すべて非表示にする
-            console.log("  アクション: このゲート以降なので「非表示」にします。");
+            // console.log("  アクション: このゲート以降なので「非表示」にします。");
             gateHeader.style.display = 'none';
             if (gateContainer) gateContainer.style.display = 'none';
             if (revealSection && revealSection.classList.contains('revealable-section')) {
@@ -46,7 +47,7 @@ function updateContentVisibility()
         else
         {
             // 「最初の未解決ゲート」より前にある要素は、すべて表示する
-            console.log("  アクション: このゲートを「表示」します。");
+            // console.log("  アクション: このゲートを「表示」します。");
             gateHeader.style.display = '';
             if (gateContainer) gateContainer.style.display = '';
 
@@ -82,19 +83,19 @@ function updateContentVisibility()
                 }
             }
 
-            console.log(`  このゲートは解決済みか？ -> ${isSolved}`);
+            // console.log(`  このゲートは解決済みか？ -> ${isSolved}`);
 
             if (isSolved)
             {
                 // このゲートが解決済みなら、後続のコンテンツを表示する
-                console.log("  結果: 解決済みなので、後続のコンテンツを表示します。");
+                // console.log("  結果: 解決済みなので、後続のコンテンツを表示します。");
                 if (revealSection && revealSection.classList.contains('revealable-section')) {
                     revealSection.classList.add('revealed');
                 }
             }
             else
             {
-                console.log("  結果: これが最初の未解決ゲートです。これ以降の全要素を非表示にするように設定します。");
+                // console.log("  結果: これが最初の未解決ゲートです。これ以降の全要素を非表示にするように設定します。");
                 // これが最初の未解決ゲート。これ以降のループでは全てを非表示にする
                 everythingAfterShouldBeHidden = true;
                 // このゲート自身の後続コンテンツは非表示のままにする
@@ -110,16 +111,16 @@ function updateContentVisibility()
 function checkWaitCondition(buttonElement)
 {
     const waitId = buttonElement.dataset.waitId;
-    const encodedPasswordsStr = buttonElement.dataset.password; // エンコードされたパスワード
+    const encodedPasswordsStr = buttonElement.dataset.password;
     const resultDisplayElement = document.getElementById(`wait-result-${waitId}`);
     let conditionMet = false;
-        
-    if (storedPasswordsStr === "")
-    { // パスワードが設定されていない場合 (「次へ進む」ボタン)
+
+    if (encodedPasswordsStr === "")
+    {
         conditionMet = true;
     }
     else
-    { // パスワードが設定されている場合
+    {
         const userInputElement = document.getElementById(`wait-input-${waitId}`);
         if (!userInputElement)
         {
@@ -131,11 +132,9 @@ function checkWaitCondition(buttonElement)
             }
             return;
         }
-        const userEnteredPassword = userInputElement.value; // パスワードはエスケープしない生の値を比較
-        const encodedUserPassword = btoa(userEnteredPassword);
-        const correctEncodedPasswords = encodedPasswordsStr.split(',').map(pass => pass.trim());
-         const correctPasswords = storedPasswordsStr.split(',').map(pass => pass.trim());
-        if (userEnteredPassword == "") // 空欄Enter
+
+        const userEnteredPassword = userInputElement.value;
+        if (userEnteredPassword === "")
         {
             if (resultDisplayElement)
             {
@@ -144,26 +143,35 @@ function checkWaitCondition(buttonElement)
             }
             return;
         }
-        else if (correctEncodedPasswords.includes(encodedUserPassword))
+
+        // 修正点: ユーザーの入力にプレフィックスを付けてからエンコード
+        const prefixedPassword = currentMagicPrefix + userEnteredPassword;
+        let encodedUserPassword = '';
+        try
+        {
+            encodedUserPassword = btoa(unescape(encodeURIComponent(prefixedPassword)));
+        }
+        catch(e)
+        {
+            console.error("Base64エンコードに失敗:", userEnteredPassword, e);
+        }
+
+        const correctEncodedPasswords = encodedPasswordsStr.split(',').map(pass => pass.trim());
+
+        if (correctEncodedPasswords.includes(encodedUserPassword))
         {
             conditionMet = true;
         }
         else
         {
-            if (correctPasswords.includes(userEnteredPassword)) // 正解 Enter
+            if (resultDisplayElement)
             {
-                conditionMet = true;
-            }
-            else // 非空欄で不正解 Enter
-            {
-                if (resultDisplayElement)
-                {
-                    resultDisplayElement.textContent = "パスワードが違います。";
-                    resultDisplayElement.className = 'wait-gate-result result-incorrect';
-                }
+                resultDisplayElement.textContent = "パスワードが違います。";
+                resultDisplayElement.className = 'wait-gate-result result-incorrect';
             }
         }
     }
+
     if (conditionMet)
     {
         if (resultDisplayElement)
@@ -172,22 +180,19 @@ function checkWaitCondition(buttonElement)
             resultDisplayElement.className = 'wait-gate-result result-correct';
         }
         
-        // ボタンと入力フィールドを無効化 (あれば)
         buttonElement.disabled = true;
         const inputElement = document.getElementById(`wait-input-${waitId}`);
-        
         if (inputElement)
         {
             inputElement.disabled = true;
         }
-        saveProgress(); // 進行状況を保存
-        updateContentVisibility(); // 表示更新
-        
+        saveProgress();
+        updateContentVisibility();
     }
 }
 
 function handleProblemInputEnter(event)
-    {
+{
     if (event.key === 'Enter' || event.keyCode === 13)
         {
         event.preventDefault();
@@ -213,129 +218,146 @@ function handleWaitInputEnter(event)
         }
     }
 }
-
 // 問題スキップ用関数
 function skipProblem(buttonElement)
 {
     const currentCooldown = BASE_COOLDOWN_MS + (getSkipCount() * COOLDOWN_INCREMENT_MS);
     const cooldownInSeconds = Math.round(currentCooldown / 1000);
     
-    // 1. 確認メッセージを表示
-    //    ユーザーが「キャンセル」を選択した場合は、以降の処理を行いません。
-    if (!window.confirm(`本当にこの問題をスキップしますか？\n（次にスキップ可能になるまで約${cooldownInSeconds}秒かかります）`)) {
+    if (!window.confirm(`本当にこの問題をスキップしますか？\n（次にスキップ可能になるまで約${cooldownInSeconds}秒かかります）`))
+    {
         return;
     }
     incrementSkipCount();
 
     const problemId = buttonElement.dataset.problemId;
-
-    // 関連するDOM要素を取得
     const userInputElement = document.getElementById(`problem-input-${problemId}`);
     const resultDisplayElement = document.getElementById(`problem-result-${problemId}`);
-    const sectionToReveal = document.getElementById(`reveal-after-problem-${problemId}`);
     const checkButton = document.querySelector(`button[data-problem-id="${problemId}"][onclick="checkProblemAnswer(this)"]`);
 
-    if (!resultDisplayElement) { return; }
+    if (!resultDisplayElement || !checkButton) { return; }
 
-    // 「判定」ボタンのdata-answers属性から正解文字列を取得。
-    const answersString = checkButton.dataset.answers;
-    if (answersString) {
-        // カンマで区切られた正解の中から、最初のものを取得。
-        const firstAnswer = answersString.split(',')[0].trim();
-        // 解答欄(input)に最初の正解を表示します。
-        if (userInputElement) {
-            userInputElement.value = firstAnswer;
+    const encodedAnswersString = checkButton.dataset.answers;
+    if (encodedAnswersString)
+    {
+        const firstEncodedAnswer = encodedAnswersString.split(',')[0].trim();
+        if (userInputElement)
+        {
+            try
+            {
+                const decodedWithPrefix = decodeURIComponent(escape(atob(firstEncodedAnswer)));
+                if (decodedWithPrefix.startsWith(currentMagicPrefix))
+                {
+                    userInputElement.value = decodedWithPrefix.substring(currentMagicPrefix.length);
+                }
+                else
+                {
+                    userInputElement.value = decodedWithPrefix; // 古いデータ用のフォールバック
+                }
+            }
+            catch (e)
+            {
+                console.error("Base64デコードに失敗:", firstEncodedAnswer, e);
+                userInputElement.value = "答えの表示に失敗";
+            }
         }
     }
     
-    // スキップ処理の本体
     resultDisplayElement.textContent = "この問題はスキップしました。";
     resultDisplayElement.className = 'problem-result result-skipped'; 
     
-
-    if (userInputElement) {
-        userInputElement.disabled = true;
-    }
-    if (checkButton) {
-        checkButton.disabled = true;
-    }
+    if (userInputElement) userInputElement.disabled = true;
+    if (checkButton) checkButton.disabled = true;
+    if (buttonElement) buttonElement.disabled = true;
     
+    saveProgress();
+    updateContentVisibility();
     
-    saveProgress(); // 進捗を保存
-    updateContentVisibility(); // 表示更新
-    
-    // 2. クールダウン処理10秒→12秒→...と伸びる
-    //    まず、ページ内にあるすべての「諦めて飛ばす」ボタンを無効化します。
     const allSkipButtons = document.querySelectorAll('.skip-button');
-    allSkipButtons.forEach(btn => {
+    allSkipButtons.forEach(btn =>
+    {
         btn.disabled = true;
     });
 
-    // 10秒後にタイマーを設定し、未解決の問題のボタンだけを再度有効にします。
-    setTimeout(() => {
-        document.querySelectorAll('.skip-button').forEach(btn => {
+    setTimeout(() =>
+    {
+        document.querySelectorAll('.skip-button').forEach(btn =>
+        {
             const pid = btn.dataset.problemId;
             const correspondingCheckButton = document.querySelector(`button[data-problem-id="${pid}"][onclick="checkProblemAnswer(this)"]`);
             
-            // 対応する「判定」ボタンがまだ無効化されていない（＝問題が未解決）場合のみ、
-            // 「諦めて飛ばす」ボタンを再度有効にします。
-            if (correspondingCheckButton && !correspondingCheckButton.disabled) {
+            if (correspondingCheckButton && !correspondingCheckButton.disabled)
+            {
                 btn.disabled = false;
             }
         });
         const nextCooldownInSeconds = Math.round((BASE_COOLDOWN_MS + (getSkipCount() * COOLDOWN_INCREMENT_MS)) / 1000);
         console.log(`スキップ機能のクールダウンが終了しました。次の待機時間は${nextCooldownInSeconds}秒です。`); 
-    }, currentCooldown);
+    }, currentCooldown); 
 }
 
 // --- 回答判定関数 ---
 function checkProblemAnswer(buttonElement)
 {
     const problemId = buttonElement.dataset.problemId;
-    const answersString = buttonElement.dataset.answers;
+    const encodedAnswersString = buttonElement.dataset.answers;
     const userInputElement = document.getElementById(`problem-input-${problemId}`);
     const resultDisplayElement = document.getElementById(`problem-result-${problemId}`);
     if (!userInputElement || !resultDisplayElement) { return; }
+
     const skipButton = buttonElement.nextElementSibling;
     const userAnswer = userInputElement.value.trim();
-    const correctAnswers = answersString.split(',').map(ans => ans.trim());
+    const prefixedUserAnswer = currentMagicPrefix + userAnswer;
+    const correctEncodedAnswers = encodedAnswersString.split(',').map(ans => ans.trim());
+    let encodedUserAnswer = '';
+    if (userAnswer)
+    {
+        try
+        {
+            encodedUserAnswer = btoa(unescape(encodeURIComponent(prefixedUserAnswer)));
+        }
+        catch(e)
+        {
+            console.error("Base64エンコードに失敗:", userAnswer, e);
+        }
+    }
     
     resultDisplayElement.classList.remove('result-correct', 'result-incorrect', 'result-empty');
+
     if (userAnswer === "")
     {
         resultDisplayElement.textContent = "入力してください。";
         resultDisplayElement.classList.add('result-empty');
     }
-    else if (correctAnswers.includes(userAnswer))
+    else if (correctEncodedAnswers.includes(encodedUserAnswer))
     {
-        const wasAlreadySolved = buttonElement.disabled; // 無効化される前に確認
+        const wasAlreadySolved = buttonElement.disabled;
         resultDisplayElement.textContent = "正解！ 🎉";
         resultDisplayElement.classList.add('result-correct');
     
-        if (!wasAlreadySolved) { // まだ解かれていなかった場合のみカウントアップ
-            incrementCorrectProblemsCount(); // 正解数をインクリメント
+        if (!wasAlreadySolved)
+        {
+            incrementCorrectProblemsCount();
         }
 
-       // 全ての関連ボタンを無効化
         buttonElement.disabled = true;
         userInputElement.disabled = true;
 
-        // スキップボタンが存在し、かつそれが本当にスキップボタンであれば無効化
-        if (skipButton && skipButton.classList.contains('skip-button')) {
+        if (skipButton && skipButton.classList.contains('skip-button'))
+        {
             skipButton.disabled = true;
         }
-        
     }
     else
     {
         resultDisplayElement.textContent = "不正解です。";
         resultDisplayElement.classList.add('result-incorrect');
     }
-    updateScoreDisplay();      // スコア表示を更新
-    saveProgress();            // 状態を保存
-    updateContentVisibility(); // 非表示だった問題を表示
-}
 
+    updateScoreDisplay();
+    saveProgress();
+    updateContentVisibility();
+}
 
 
 document.addEventListener('DOMContentLoaded', () =>
@@ -443,6 +465,18 @@ document.addEventListener('DOMContentLoaded', () =>
                         <div class="wait-gate-body">${bodyText}</div>
                         <div class="wait-gate-interactive">${interactiveElementsHtml}<span id="wait-result-${waitId}" class="wait-gate-result"></span></div>
                     </div>`;
+            },
+            "#MP": (args) =>
+            {
+                // #MP{new_prefix} の形式で呼び出された場合
+                if (args.length > 1)
+                {
+                    currentMagicPrefix = args[1]; // プレフィックスを更新
+                }
+                // #MP{} の場合は args[1] が空文字列 "" になるので、プレフィックスがリセットされる
+                
+                // このコマンドは画面には何も表示しない
+                return ""; 
             }
         };
         // // コードブロックのプレースホルダーがHTMLタグに変換されるようにルールを追加
