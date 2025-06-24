@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ソースコード内解答 一括Base64変換ツール</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "Noto Sans CJK JP", "Yu Gothic", sans-serif; line-height: 1.7; max-width: 1000px; margin: 20px auto; padding: 0 20px; background-color: #f4f7f9; }
+        .container { background-color: #fff; padding: 2em; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        h1 { border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        h1 small { font-size: 0.5em; color: #777; }
+        label { font-weight: bold; display: block; margin-top: 1.5em; margin-bottom: 0.5em; }
+        textarea, input[type="text"] { width: 98%; padding: 1%; font-size: 1em; font-family: Consolas, "Courier New", monospace; border-radius: 4px; border: 1px solid #ccc; resize: vertical; }
+        button { font-size: 1.1em; padding: 10px 20px; margin-top: 1em; border: none; background-color: #007bff; color: white; border-radius: 5px; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+        #status { padding: 10px 15px; background-color: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; margin-top: 1em; word-wrap: break-word; min-height: 1.5em; }
+        code { background-color: #eee; padding: 2px 5px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>ソースコード内解答 一括Base64変換ツール <small>(v2.3)</small></h1>
+        <p>
+            教材のソースコードを貼り付けて「変換実行」ボタンを押すと、<code>#pb</code>と<code>#wt</code>の答え・パスワード部分に、指定したプレフィックスを付けてBase64エンコードします。
+        </p>
+
+        <div>
+            <label for="prefixInput">プレフィックス（魔法の文字列）:</label>
+            <input type="text" id="prefixInput" value="0000">
+        </div>
+
+        <div>
+            <label for="inputSource">1. 変換前のソースコードを入力:</label>
+            <textarea id="inputSource" rows="15" placeholder="ここにpreタグの中身を貼り付け..."></textarea>
+        </div>
+
+        <button onclick="convertSourceText()">変換実行</button>
+
+        <div>
+            <label for="outputSource">2. 変換後のソースコード（これをコピーして使用）:</label>
+            <textarea id="outputSource" rows="15" readonly></textarea>
+        </div>
+
+        <div id="status"></div>
+    </div>
+
+    <script>
+        const inputEl = document.getElementById('inputSource');
+        const outputEl = document.getElementById('outputSource');
+        const statusEl = document.getElementById('status');
+        const prefixInputEl = document.getElementById('prefixInput'); // プレフィックス入力欄を取得
+
+        // (parseCommandAndArguments関数は変更なし)
+
+        function convertSourceText()
+        {
+            // ▼▼▼ 変更点: ハードコードされた定数ではなく、入力欄の値を使用 ▼▼▼
+            const MAGIC_PREFIX = prefixInputEl.value;
+            if (MAGIC_PREFIX.trim() === '')
+            {
+                statusEl.textContent = '❌ プレフィックスが空です。変換を中止しました。';
+                statusEl.style.color = '#dc3545';
+                return;
+            }
+
+            const inputText = inputEl.value;
+            const lines = inputText.split('\n');
+            let convertedCount = 0;
+
+            const processedLines = lines.map(line =>
+            {
+                const trimmedLine = line.trim();
+                const args = parseCommandAndArguments(trimmedLine);
+                if (!args) { return line; }
+
+                const command = args[0];
+                const isPbToConvert = (command === '#pb' && args.length >= 4);
+                const isWtToConvert = (command === '#wt' && args.length >= 4);
+
+                if (isPbToConvert || isWtToConvert)
+                {
+                    const originalAnswers = args[3];
+                    if (originalAnswers.trim() === '') { return line; }
+
+                    // ▼▼▼ 変更点: プレフィックスを使った、より確実なエンコード済みチェック ▼▼▼
+                    try
+                    {
+                        const firstPart = originalAnswers.split(',')[0].trim();
+                        // デコードした文字列が、現在のプレフィックスで始まるかチェック
+                        if (firstPart && atob(firstPart).startsWith(MAGIC_PREFIX))
+                        {
+                            return line; // 既にエンコード済みなのでスキップ
+                        }
+                    }
+                    catch (e) { /* Not our format, continue */ }
+
+                    // ▼▼▼ 変更点: プレフィックスを付けてからエンコードする ▼▼▼
+                    const encodedAnswers = originalAnswers.split(',')
+                        .map(part => {
+                            const trimmedPart = part.trim();
+                            if (!trimmedPart) return '';
+                            const prefixedPart = MAGIC_PREFIX + trimmedPart; // プレフィックスを追加
+                            return btoa(unescape(encodeURIComponent(prefixedPart)));
+                        })
+                        .join(',');
+
+                    convertedCount++;
+                    
+                    const lastBraceIndex = trimmedLine.lastIndexOf('{');
+                    const lineStart = trimmedLine.substring(0, lastBraceIndex + 1);
+                    const indentation = line.match(/^\s*/)[0];
+                    return indentation + lineStart + encodedAnswers + '}';
+                }
+
+                return line;
+            });
+
+            outputEl.value = processedLines.join('\n');
+            
+            if (convertedCount > 0)
+            {
+                statusEl.textContent = `✅ ${convertedCount} 個のコマンドの解答/パスワードをエンコードしました。`;
+                statusEl.style.color = '#28a745';
+            }
+            else
+            {
+                statusEl.textContent = 'ℹ️ エンコード対象の #pb または #wt コマンドが見つからないか、既に対応済みです。';
+                statusEl.style.color = '#17a2b8';
+            }
+        }
+        
+        // parseCommandAndArgumentsの実装
+        function parseCommandAndArguments(textLine) {
+            const commandMatch = textLine.match(/^([#]{1,3}(?={)|([#@][a-zA-Z0-9_-]+))\s*/);
+            if (!commandMatch) { return null; }
+            const command = commandMatch[1];
+            const argsArray = [command];
+            let currentPos = commandMatch[0].length;
+            while (currentPos < textLine.length) {
+                if (textLine[currentPos] !== '{') {
+                    if (argsArray.length === 1 && textLine.substring(currentPos).trim() === "") { return argsArray; }
+                    break;
+                }
+                currentPos++;
+                let argumentContent = "";
+                let braceLevel = 1;
+                const argumentStartPos = currentPos;
+                while (currentPos < textLine.length) {
+                    const char = textLine[currentPos];
+                    if (char === '{') braceLevel++;
+                    else if (char === '}') braceLevel--;
+                    if (braceLevel === 0) {
+                        argumentContent = textLine.substring(argumentStartPos, currentPos);
+                        argsArray.push(argumentContent);
+                        currentPos++;
+                        break;
+                    }
+                    currentPos++;
+                }
+                if (braceLevel !== 0) { return null; }
+            }
+            return argsArray;
+        }
+    </script>
+
+</body>
+</html>
