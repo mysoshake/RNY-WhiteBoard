@@ -20,6 +20,7 @@
 <pre id="raw-src" hidden="true">
 
 #cm{コメント}
+#MP{prefix}
 
 #{テスト}
 ##{説明}
@@ -38,11 +39,17 @@
 
 #pr{これは練習}
 
-#pb{これは問題}{問題文もあるよ答えは@ul{答え}か@ul{ans}}{答え,ans}
+#pb{これは問題}{問題文もあるよ答えは@ul{答え}か@ul{ans}}{cHJlZml4YW5z,cHJlZml4562U44GI}
+
+#ex{パスワードなどの説明}
+命令#wtや#pbで答えやパスワードを指定しているときの内部処理
+@* 暗号化されたパスワード(例:cHJlZml4YW5z,cHJlZml4562U44GI)はカンマ区切りなのでそれぞれ分割する
+@* 各暗号化されたパスワードについて、逆BASE64変換をして元のパスワードを求める(例:cHJlZml4YW5z→prefixans)
+@* 入力された回答にプレフィクスを付けたもの(例:prefix+ans=prefixans)と、変換したパスワード(prefixans)が一致すれば正解
 
 #wt{待ってね（パスワード @bf{なし} ）}{説明文}{}
 
-#wt{待ってね（パスワード= @cl{red}{wait} ）}{説明文}{wait}
+#wt{待ってね（パスワード= @cl{red}{wait} ）}{説明文}{cHJlZml4Y201NVgyRnVjM2RsY2pvNmQyRnBkQT09}
 
 #as{課題}
 ファイル名：@cl{red}{@bf{ファイル名.拡張子}}
