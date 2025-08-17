@@ -503,7 +503,7 @@ document.addEventListener('DOMContentLoaded', () =>
             {
                 const new_cooldown_ms = parseInt(args[1], 10);
                 console.log();
-                if(!NaN(new_cooldown_ms))
+                if(!isNaN(new_cooldown_ms))
                 {
                     cooldown_ms = new_cooldown_ms;
                 }
