@@ -503,8 +503,15 @@ document.addEventListener('DOMContentLoaded', () =>
             {
                 if(Number.isInteger(args[1]))
                 {
-                    const new_cooldown_ms = parseInt(args[1]);
-                    cooldown_ms = new_cooldown_ms;
+                    const new_cooldown_ms = parseInt(args[1], 10);
+                    if(!NaN(new_cooldown_ms))
+                    {
+                        cooldown_ms = new_cooldown_ms;
+                    }
+                    else
+                    {
+                        return `<p style="color:red;">#CT エラー: クールダウンの計算でエラーが発生しました。</p>`;
+                    }
                 }
             }
             // このコマンドは画面には何も表示しない
