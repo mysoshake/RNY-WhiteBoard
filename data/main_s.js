@@ -6,8 +6,8 @@ const rawCodeSnippets    = new Map(); // コードスニペット保存用 Map �
 let rawCodeSnippetIndex  = 0;         // コードスニペット用インデックス
 let currentMagicPrefix = "rny_answer::";
 
-const BASE_COOLDOWN_MS = 10000; //最初のクールダウン時間(10 秒),
-const COOLDOWN_INCREMENT_MS = 5000; //スキップごとに追加される時間(5 秒)
+const BASE_COOLDOWN_MS = 1000; //デフォルトのクールダウン時間(1秒),
+let cooldown_ms = BASE_COOLDOWN_MS;
 
 // HTMLエスケープ用ヘルパー関数
 function escapeHtml(unsafeText)
@@ -221,10 +221,17 @@ function handleWaitInputEnter(event)
 // 問題スキップ用関数
 function skipProblem(buttonElement)
 {
-    const currentCooldown = BASE_COOLDOWN_MS + (getSkipCount() * COOLDOWN_INCREMENT_MS);
+    const currentCooldown = cooldown_ms;
     const cooldownInSeconds = Math.round(currentCooldown / 1000);
     
-    if (!window.confirm(`本当にこの問題をスキップしますか？\n（次にスキップ可能になるまで約${cooldownInSeconds}秒かかります）`))
+    const confMessage = () => {
+        if(cooldownInSeconds < 1.0)
+        {
+            return `本当にこの問題をスキップしますか？`;
+        }
+        return `本当にこの問題をスキップしますか？\n（次にスキップ可能になるまで約${cooldownInSeconds}秒かかります）`;
+    };
+    if (!window.confirm(confMessage()))
     {
         return;
     }
@@ -291,8 +298,7 @@ function skipProblem(buttonElement)
                 btn.disabled = false;
             }
         });
-        const nextCooldownInSeconds = Math.round((BASE_COOLDOWN_MS + (getSkipCount() * COOLDOWN_INCREMENT_MS)) / 1000);
-        console.log(`スキップ機能のクールダウンが終了しました。次の待機時間は${nextCooldownInSeconds}秒です。`); 
+        console.log(`スキップ機能のクールダウンが終了しました。`); 
     }, currentCooldown); 
 }
 
@@ -487,6 +493,20 @@ document.addEventListener('DOMContentLoaded', () =>
             }
             // #MP{} の場合は args[1] が空文字列 "" になるので、プレフィックスがリセットされる
             
+            // このコマンドは画面には何も表示しない
+            return ""; 
+        },
+        "#CT": (args) =>
+        {
+            // #CT{時間(ミリ秒)} の形式で呼び出された場合
+            if (args.length > 1)
+            {
+                if(Number.isInteger(args[1]))
+                {
+                    const new_cooldown_ms = parseInt(args[1]);
+                    cooldown_ms = new_cooldown_ms;
+                }
+            }
             // このコマンドは画面には何も表示しない
             return ""; 
         }
