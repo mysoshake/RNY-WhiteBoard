@@ -1,3 +1,4 @@
 *.html
 !sample.html
 !answer_generator.html
+*.note
