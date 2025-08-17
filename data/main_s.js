@@ -222,7 +222,7 @@ function handleWaitInputEnter(event)
 function skipProblem(buttonElement)
 {
     const currentCooldown = cooldown_ms;
-    const cooldownInSeconds = Math.round(currentCooldown / 1000);
+    const cooldownInSeconds = Math.floor(currentCooldown / 1000);
     
     const confMessage = () => {
         if(cooldownInSeconds < 1.0)
@@ -504,6 +504,7 @@ document.addEventListener('DOMContentLoaded', () =>
                 if(Number.isInteger(args[1]))
                 {
                     const new_cooldown_ms = parseInt(args[1], 10);
+                    console.log();
                     if(!NaN(new_cooldown_ms))
                     {
                         cooldown_ms = new_cooldown_ms;
