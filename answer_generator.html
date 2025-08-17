@@ -11,8 +11,11 @@
         h1 small { font-size: 0.5em; color: #777; }
         label { font-weight: bold; display: block; margin-top: 1.5em; margin-bottom: 0.5em; }
         textarea, input[type="text"] { width: 98%; padding: 1%; font-size: 1em; font-family: Consolas, "Courier New", monospace; border-radius: 4px; border: 1px solid #ccc; resize: vertical; }
-        button { font-size: 1.1em; padding: 10px 20px; margin-top: 1em; border: none; background-color: #007bff; color: white; border-radius: 5px; cursor: pointer; }
-        button:hover { background-color: #0056b3; }
+        .buttons { margin-top: 1em; display: flex; gap: 10px; }
+        button { font-size: 1.1em; padding: 10px 20px; border: none; color: white; border-radius: 5px; cursor: pointer; flex-grow: 1; }
+        button:hover { opacity: 0.9; }
+        #encodeBtn { background-color: #007bff; }
+        #decodeBtn { background-color: #6c757d; }
         #status { padding: 10px 15px; background-color: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; margin-top: 1em; word-wrap: break-word; min-height: 1.5em; }
         code { background-color: #eee; padding: 2px 5px; border-radius: 3px; }
     </style>
@@ -20,9 +23,10 @@
 <body>
 
     <div class="container">
-        <h1>ソースコード内解答 一括Base64変換ツール <small>(v2.3)</small></h1>
+        <h1>ソースコード内解答 一括Base64変換ツール <small>(v2.4)</small></h1>
         <p>
-            教材のソースコードを貼り付けて「変換実行」ボタンを押すと、<code>#pb</code>と<code>#wt</code>の答え・パスワード部分に、指定したプレフィックスを付けてBase64エンコードします。
+            教材のソースコードを貼り付けて「エンコード実行」または「デコード実行」ボタンを押してください。<br>
+            内部の<code>#pb</code>と<code>##pb</code>と<code>#wt</code>コマンドの解答/パスワード部分を自動で変換します。
         </p>
 
         <div>
@@ -31,14 +35,17 @@
         </div>
 
         <div>
-            <label for="inputSource">1. 変換前のソースコードを入力:</label>
+            <label for="inputSource">1. ソースコードを入力:</label>
             <textarea id="inputSource" rows="15" placeholder="ここにpreタグの中身を貼り付け..."></textarea>
         </div>
 
-        <button onclick="convertSourceText()">変換実行</button>
+        <div class="buttons">
+            <button id="encodeBtn" onclick="processSourceText('encode')">エンコード実行</button>
+            <button id="decodeBtn" onclick="processSourceText('decode')">デコード実行</button>
+        </div>
 
         <div>
-            <label for="outputSource">2. 変換後のソースコード（これをコピーして使用）:</label>
+            <label for="outputSource">2. 変換後のソースコード:</label>
             <textarea id="outputSource" rows="15" readonly></textarea>
         </div>
 
@@ -49,13 +56,14 @@
         const inputEl = document.getElementById('inputSource');
         const outputEl = document.getElementById('outputSource');
         const statusEl = document.getElementById('status');
-        const prefixInputEl = document.getElementById('prefixInput'); // プレフィックス入力欄を取得
+        const prefixInputEl = document.getElementById('prefixInput');
 
-        // (parseCommandAndArguments関数は変更なし)
-
-        function convertSourceText()
+        /**
+         * A generic function to process the source text for encoding or decoding.
+         * @param {'encode' | 'decode'} mode - The operation mode.
+         */
+        function processSourceText(mode)
         {
-            // ▼▼▼ 変更点: ハードコードされた定数ではなく、入力欄の値を使用 ▼▼▼
             const MAGIC_PREFIX = prefixInputEl.value;
             if (MAGIC_PREFIX.trim() === '')
             {
@@ -75,62 +83,79 @@
                 if (!args) { return line; }
 
                 const command = args[0];
-                const isPbToConvert = (command === '#pb' && args.length >= 4);
-                const isWtToConvert = (command === '#wt' && args.length >= 4);
+                const isPb = ((command === '#pb' || command === '##pb') && args.length >= 4);
+                const isWt = (command === '#wt' && args.length >= 4);
 
-                if (isPbToConvert || isWtToConvert)
+                if (isPb || isWt)
                 {
-                    const originalAnswers = args[3];
-                    if (originalAnswers.trim() === '') { return line; }
+                    const answers = args[3];
+                    if (answers.trim() === '') { return line; }
 
-                    // ▼▼▼ 変更点: プレフィックスを使った、より確実なエンコード済みチェック ▼▼▼
-                    try
+                    let newAnswers = '';
+                    if (mode === 'encode')
                     {
-                        const firstPart = originalAnswers.split(',')[0].trim();
-                        // デコードした文字列が、現在のプレフィックスで始まるかチェック
-                        if (firstPart && atob(firstPart).startsWith(MAGIC_PREFIX))
+                        // --- ENCODING LOGIC ---
+                        try
                         {
-                            return line; // 既にエンコード済みなのでスキップ
+                            const firstPart = answers.split(',')[0].trim();
+                            if (firstPart && atob(firstPart).startsWith(MAGIC_PREFIX)) { return line; }
                         }
+                        catch (e) { /* Not our format, so we can encode */ }
+                        
+                        newAnswers = answers.split(',')
+                            .map(part => {
+                                const trimmed = part.trim();
+                                if (!trimmed) return '';
+                                const prefixed = MAGIC_PREFIX + trimmed;
+                                return btoa(unescape(encodeURIComponent(prefixed)));
+                            })
+                            .join(',');
                     }
-                    catch (e) { /* Not our format, continue */ }
+                    else // mode === 'decode'
+                    {
+                        // --- DECODING LOGIC ---
+                        newAnswers = answers.split(',')
+                            .map(part => {
+                                const trimmed = part.trim();
+                                if (!trimmed) return '';
+                                try {
+                                    const decoded = decodeURIComponent(escape(atob(trimmed)));
+                                    return decoded.startsWith(MAGIC_PREFIX) ? decoded.substring(MAGIC_PREFIX.length) : trimmed;
+                                } catch (e) {
+                                    return trimmed; // If it's not valid Base64, return it as is.
+                                }
+                            })
+                            .join(',');
+                    }
 
-                    // ▼▼▼ 変更点: プレフィックスを付けてからエンコードする ▼▼▼
-                    const encodedAnswers = originalAnswers.split(',')
-                        .map(part => {
-                            const trimmedPart = part.trim();
-                            if (!trimmedPart) return '';
-                            const prefixedPart = MAGIC_PREFIX + trimmedPart; // プレフィックスを追加
-                            return btoa(unescape(encodeURIComponent(prefixedPart)));
-                        })
-                        .join(',');
-
-                    convertedCount++;
-                    
-                    const lastBraceIndex = trimmedLine.lastIndexOf('{');
-                    const lineStart = trimmedLine.substring(0, lastBraceIndex + 1);
-                    const indentation = line.match(/^\s*/)[0];
-                    return indentation + lineStart + encodedAnswers + '}';
+                    if (answers !== newAnswers)
+                    {
+                        convertedCount++;
+                        const lastBraceIndex = trimmedLine.lastIndexOf('{');
+                        const lineStart = trimmedLine.substring(0, lastBraceIndex + 1);
+                        const indentation = line.match(/^\s*/)[0];
+                        return indentation + lineStart + newAnswers + '}';
+                    }
                 }
-
                 return line;
             });
 
             outputEl.value = processedLines.join('\n');
             
+            const actionText = mode === 'encode' ? 'エンコード' : 'デコード';
             if (convertedCount > 0)
             {
-                statusEl.textContent = `✅ ${convertedCount} 個のコマンドの解答/パスワードをエンコードしました。`;
+                statusEl.textContent = `✅ ${convertedCount} 個のコマンドの解答/パスワードを${actionText}しました。`;
                 statusEl.style.color = '#28a745';
             }
             else
             {
-                statusEl.textContent = 'ℹ️ エンコード対象の #pb または #wt コマンドが見つからないか、既に対応済みです。';
+                statusEl.textContent = `ℹ️ ${actionText}対象の #pb , ##pb または #wt コマンドが見つかりませんでした。`;
                 statusEl.style.color = '#17a2b8';
             }
         }
         
-        // parseCommandAndArgumentsの実装
+        // parser function (no changes)
         function parseCommandAndArguments(textLine) {
             const commandMatch = textLine.match(/^([#]{1,3}(?={)|([#@][a-zA-Z0-9_-]+))\s*/);
             if (!commandMatch) { return null; }
