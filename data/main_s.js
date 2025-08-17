@@ -501,18 +501,15 @@ document.addEventListener('DOMContentLoaded', () =>
             // #CT{時間(ミリ秒)} の形式で呼び出された場合
             if (args.length > 1)
             {
-                if(Number.isInteger(args[1]))
+                const new_cooldown_ms = parseInt(args[1], 10);
+                console.log();
+                if(!NaN(new_cooldown_ms))
                 {
-                    const new_cooldown_ms = parseInt(args[1], 10);
-                    console.log();
-                    if(!NaN(new_cooldown_ms))
-                    {
-                        cooldown_ms = new_cooldown_ms;
-                    }
-                    else
-                    {
-                        return `<p style="color:red;">#CT エラー: クールダウンの計算でエラーが発生しました。</p>`;
-                    }
+                    cooldown_ms = new_cooldown_ms;
+                }
+                else
+                {
+                    return `<p style="color:red;">#CT エラー: クールダウンの計算でエラーが発生しました。</p>`;
                 }
             }
             // このコマンドは画面には何も表示しない
