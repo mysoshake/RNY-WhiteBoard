@@ -103,7 +103,7 @@ function parseInlineToAST(text) {
                         node.content = [{ type: "text", value: result.args[1] }]; // コード内容はそのままテキストノードとして扱う
                     } else if (cmdParser.type === "im") {
                         node.link    = result.args[0];
-                        node.content = args.length === 4 ? result.args[1] : "Error Illegal Arguments";
+                        node.content = args.length === 4 ? [result.args[1]] : ["Error Illegal Arguments"];
                         node.attributes = { width: result.args[2], height: result.args[3] };
                     } else { // bf, ul
                         node.content = parseInlineToAST(result.args[0]); // 内容を再帰的にパース
