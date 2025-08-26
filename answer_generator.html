@@ -26,7 +26,7 @@
         <h1>ソースコード内解答 一括Base64変換ツール <small>(v2.4)</small></h1>
         <p>
             教材のソースコードを貼り付けて「エンコード実行」または「デコード実行」ボタンを押してください。<br>
-            内部の<code>#pb</code>と<code>##pb</code>と<code>#wt</code>コマンドの解答/パスワード部分を自動で変換します。
+            内部の<code>#pb</code>と<code>#wt</code>コマンドの解答/パスワード部分を自動で変換します。
         </p>
 
         <div>
@@ -83,7 +83,7 @@
                 if (!args) { return line; }
 
                 const command = args[0];
-                const isPb = ((command === '#pb' || command === '##pb') && args.length >= 4);
+                const isPb = (command === '#pb' && args.length >= 4);
                 const isWt = (command === '#wt' && args.length >= 4);
 
                 if (isPb || isWt)
@@ -150,7 +150,7 @@
             }
             else
             {
-                statusEl.textContent = `ℹ️ ${actionText}対象の #pb , ##pb または #wt コマンドが見つかりませんでした。`;
+                statusEl.textContent = `ℹ️ ${actionText}対象の #pb または #wt コマンドが見つかりませんでした。`;
                 statusEl.style.color = '#17a2b8';
             }
         }
