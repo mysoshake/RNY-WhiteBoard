@@ -67,12 +67,14 @@ function parseTwoArgContent(text, prefix) {
  * 例: @cl{color}{content} -> { args: ["color", "content"], consumedLength: total_length }
  */
 function parseNArgContent(text, prefix, arglen) {
+    // 先頭が正しいコマンド名でないなら null を返す
     if (!text.startsWith(prefix)) return null;
     
+    // 各種変数設定
     let argHead = prefix.length;
     let argEnd = -1;
     let braceLevel = 1;
-    let args = [];
+    let argslist = [];
     
     for (let n = 0; n < arglen; n++) {
         ARG_LOOP: for (let k = argHead; k < text.length; k++) {
@@ -81,23 +83,25 @@ function parseNArgContent(text, prefix, arglen) {
             else if (text[k] === '}') braceLevel--;
             
             if (braceLevel === 0) {
-                args.push(text.substring(argHead, k));
+                argslist.push(text.substring(argHead, k));
                 argEnd = k;
                 break ARG_LOOP;
             }   
         }
         
+        // 最後の引数なら終了
+        if (n === arglen - 1) return { args: argslist, consumedLength: k + 1 };
+        
         // 第n引数が正しく閉じられ、次に '{' が続くか
-        if (argEnd === -1 || (argEnd + 1 >= text.length || text[argEnd + 1] !== '{') ) {
-            return null;
-        }
+        //// {.*}が見つからない or textに続きがない or 次の文字が { ではない　→　終了
+        if (argEnd === -1 || (argEnd + 1 >= text.length || text[argEnd + 1] !== '{') ) return null;
         
         // 次の引数の準備
         argHead = argEnd + 2; // '}{' の後
+        argEnd = -1;
         braceLevel = 1;
+        if (DEBUG_MODE) console.log("args: ", argslist);
     }
-    
-    return null; // 第2引数の閉じ括弧不一致
 }
 
 const inlineCommandParsers = [
