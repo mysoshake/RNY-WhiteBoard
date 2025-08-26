@@ -62,6 +62,44 @@ function parseTwoArgContent(text, prefix) {
     return null; // 第2引数の閉じ括弧不一致
 }
 
+/**
+ * 引数Nつ取るコマンドの引数内容と消費長を抽出するヘルパー
+ * 例: @cl{color}{content} -> { args: ["color", "content"], consumedLength: total_length }
+ */
+function parseNArgContent(text, prefix, arglen) {
+    if (!text.startsWith(prefix)) return null;
+    
+    let argHead = prefix.length;
+    let argEnd = -1;
+    let braceLevel = 1;
+    let args = [];
+    
+    for (let n = 0; n < arglen; n++) {
+        ARG_LOOP: for (let k = argHead; k < text.length; k++) {
+            
+            if (text[k] === '{') braceLevel++;
+            else if (text[k] === '}') braceLevel--;
+            
+            if (braceLevel === 0) {
+                args.push(text.substring(argHead, k));
+                argEnd = k;
+                break ARG_LOOP;
+            }   
+        }
+        
+        // 第n引数が正しく閉じられ、次に '{' が続くか
+        if (argEnd === -1 || (argEnd + 1 >= text.length || text[argEnd + 1] !== '{') ) {
+            return null;
+        }
+        
+        // 次の引数の準備
+        let argHead = argEnd + 2; // '}{' の後
+        braceLevel = 1;
+    }
+    
+    return null; // 第2引数の閉じ括弧不一致
+}
+
 const inlineCommandParsers = [
     { prefix: "@bf{", type: "bf", parser: (text) => parseSingleArgContent(text, "@bf{") },
     { prefix: "@ul{", type: "ul", parser: (text) => parseSingleArgContent(text, "@ul{") },
@@ -69,7 +107,7 @@ const inlineCommandParsers = [
     { prefix: "@rb{", type: "rb", parser: (text) => parseTwoArgContent(text, "@rb{") },
     { prefix: "@rf{", type: "rf", parser: (text) => parseTwoArgContent(text, "@rf{") },
     { prefix: "@cd{", type: "cd", parser: (text) => parseTwoArgContent(text, "@cd{") }, // @cd もここでパース
-    { prefix: "@im{", type: "im", parser: (text) => parseTwoArgContent(text, "@im{") }
+    { prefix: "@im{", type: "im", parser: (text) => parseNArgContent(text, "@im{", 4) }
 ];
 
 /**
