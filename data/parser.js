@@ -75,9 +75,10 @@ function parseNArgContent(text, prefix, arglen) {
     let argEnd = -1;
     let braceLevel = 1;
     let argslist = [];
+    let k = 0;
     
     for (let n = 0; n < arglen; n++) {
-        ARG_LOOP: for (let k = argHead; k < text.length; k++) {
+        ARG_LOOP: for (k = argHead; k < text.length; k++) {
             
             if (text[k] === '{') braceLevel++;
             else if (text[k] === '}') braceLevel--;
