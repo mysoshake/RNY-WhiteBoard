@@ -93,7 +93,7 @@ function parseNArgContent(text, prefix, arglen) {
         }
         
         // 次の引数の準備
-        let argHead = argEnd + 2; // '}{' の後
+        argHead = argEnd + 2; // '}{' の後
         braceLevel = 1;
     }
     
