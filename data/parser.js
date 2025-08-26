@@ -165,7 +165,7 @@ function renderASTtoHTML(astNodes) {
                 const code = node.content && node.content[0] && node.content[0].type === "text" ? escapeHtml(node.content[0].value) : '';
                 return `<code class="language-${lang}">${code}</code>`;
             case "im":
-                return `<img href="${node.link}">${renderASTtoHTML(node.content)}</img>`;
+                return `<img href="${node.src}">${renderASTtoHTML(node.alt)}</img>`;
             default:
                 console.warn("Unknown AST node type:", node.type);
                 return '';
