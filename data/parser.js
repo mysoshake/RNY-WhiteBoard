@@ -103,8 +103,7 @@ function parseInlineToAST(text) {
                         node.content = [{ type: "text", value: result.args[1] }]; // コード内容はそのままテキストノードとして扱う
                     } else if (cmdParser.type === "im") {
                         node.link    = result.args[0];
-                        node.content = args.length === 4 ? [result.args[1]] : ["Error Illegal Arguments"];
-                        node.attributes = { width: result.args[2], height: result.args[3] };
+                        node.attributes = { alt: result.args[1], width: result.args[2], height: result.args[3] };
                     } else { // bf, ul
                         node.content = parseInlineToAST(result.args[0]); // 内容を再帰的にパース
                     }
@@ -168,7 +167,7 @@ function renderASTtoHTML(astNodes) {
                 return `<code class="language-${lang}">${code}</code>`;
             case "im":
                 
-                return `<img href="${node.link}" alt="${renderASTtoHTML(node.content)}" width=${node.width} height=${node.height}>`;
+                return `<img href="${node.link}" alt="${renderASTtoHTML(node.attributes.alt)}" width=${node.attributes.width} height=${node.attributes.height}>`;
             default:
                 console.warn("Unknown AST node type:", node.type);
                 return '';
