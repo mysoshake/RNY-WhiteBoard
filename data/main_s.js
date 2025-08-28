@@ -30,32 +30,66 @@ function escapeHtml(unsafeText)
 function updateContentVisibility()
 {
     console.log("--- 表示状態の更新を開始 ---");
-    
-    // 最初の未解決ゲートを見つけ、それ以降のゲートとコンテンツをすべて非表示にする
-    let everythingAfterShouldBeHidden = false;
+
     let masterShowAll = false;
-    
-    document.querySelectorAll('#output > *').forEach(element => {
-        if (element.matches('.visibility-marker')) {
+    let stopShowing = false;      // これ以降の要素を非表示にするかどうかのフラグ
+    let unsolvedGateHeader = null; // 未解決だったゲートのヘッダー要素を一時的に保持
+
+    const allElements = document.querySelectorAll('#output > *');
+
+    allElements.forEach(element =>
+    {
+        // --- 1. グローバルな表示設定の処理 ---
+
+        // #ST コマンドによって挿入されたマーカーを処理
+        if (element.matches('.visibility-marker'))
+        {
             masterShowAll = (element.dataset.mode === 'show');
+            element.style.display = 'none'; // マーカー自体は常に非表示
+            return;
+        }
+
+        // 全表示モードが有効な場合は、以降の処理をスキップして表示
+        if (masterShowAll)
+        {
+            element.style.display = '';
+            return;
+        }
+
+        // --- 2. 表示/非表示の決定 ---
+
+        // 表示停止フラグが立っている場合、要素を非表示にして処理を終了
+        if (stopShowing)
+        {
             element.style.display = 'none';
             return;
         }
-        
-        const isVisible = isMasterShowMode || !shouldHideFollowingContent;
-        element.style.display = isVisible ? '' : 'none'
-        
-        // 表示モードのとき、問題などが未開決かどうか調べる
+
+        // この時点では表示対象なので、表示状態にする
+        element.style.display = '';
+
+        // --- 3. 次の要素から非表示にするかどうかの判定 ---
+
+        // 直前のループで未解決ゲートが見つかっていた場合、現在の要素がそのコンテナかどうかを判定
+        if (unsolvedGateHeader && element === unsolvedGateHeader.nextElementSibling)
+        {
+            // この要素は未解決ゲートのコンテナ。これを表示した後、次の要素から非表示にする
+            stopShowing = true;
+            unsolvedGateHeader = null; // 判定が終わったのでリセット
+        }
+
+        // 現在の要素がゲートのヘッダー（タイトル）かどうかをチェック
         if (element.matches('h2.problem, h2.wait-gate-title'))
         {
             const gateHeader = element;
             const gateContainer = gateHeader.nextElementSibling;
-            const revealSection = gateContainer ? gateContainer.nextElementSibling : null;
+            
+            let isSolved = true; // デフォルトは「解決済み」
 
             const gateType = gateHeader.matches('.problem') ? 'problem' : 'wait';
             const currentMode = gateVisibilityModes[gateType];
-            let isSolved = true;
 
+            // 'hide' モードの場合のみ、解決状態をチェック
             if (currentMode === 'hide' && gateContainer)
             {
                 const problemIdMatch = gateHeader.textContent.match(/問題 (\d+):/);
@@ -73,19 +107,18 @@ function updateContentVisibility()
                         checkButton = gateContainer.querySelector(`button[data-wait-id="${gateId}"][onclick="checkWaitCondition(this)"]`);
                     }
                 }
+                
+                // ボタンが存在し、かつ無効化されていない（＝クリック可能）なら「未解決」
                 if (checkButton && !checkButton.disabled)
                 {
                     isSolved = false;
                 }
             }
             
-            if (revealSection)
-            {
-                revealSection.classList.toggle('revealed', isSolved);
-            }
+            // ゲートが未解決だった場合、そのヘッダー情報を次のループのために保持しておく
             if (!isSolved)
             {
-                everythingAfterShouldBeHidden = true;
+                unsolvedGateHeader = gateHeader;
             }
         }
     });
@@ -403,6 +436,11 @@ document.addEventListener('DOMContentLoaded', () =>
     const scoreCounterElement = document.getElementById('score-counter');
     if (scoreCounterElement) {
         scoreCounterElement.addEventListener('click', handleScoreAreaClick);
+        if (DEBUG_MODE) console.log("OK: スコア一覧(#score-counter)にクリックイベントリスナーを登録しました。");
+    }
+    else
+    {
+        if (DEBUG_MODE) console.error("エラー: スコア一覧のHTML要素(#score-counter)が見つかりません。");
     }
     
     
