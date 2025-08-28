@@ -41,15 +41,9 @@ function updateContentVisibility()
             element.style.display = 'none';
             return;
         }
-
-        if (masterShowAll || !everythingAfterShouldBeHidden)
-        {
-            element.style.display = '';
-        }
-        else
-        {
-            element.style.display = 'none';
-        }
+        
+        const isVisible = isMasterShowMode || !shouldHideFollowingContent;
+        element.style.display = isVisible ? '' : 'none'
         
         // 表示モードのとき、問題などが未開決かどうか調べる
         if (element.matches('h2.problem, h2.wait-gate-title'))
