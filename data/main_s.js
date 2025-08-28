@@ -42,67 +42,56 @@ function updateContentVisibility()
             return;
         }
 
-        if (masterShowAll) {
+        if (masterShowAll || !everythingAfterShouldBeHidden)
+        {
             element.style.display = '';
-            if (element.classList.contains('revealable-section'))
-            {
-                element.classList.add('revealed');
-            }
-            return;
         }
-
-        if (element.matches('h2.problem, h2.wait-gate-title')) {
+        else
+        {
+            element.style.display = 'none';
+        }
+        
+        // 表示モードのとき、問題などが未開決かどうか調べる
+        if (element.matches('h2.problem, h2.wait-gate-title'))
+        {
             const gateHeader = element;
             const gateContainer = gateHeader.nextElementSibling;
             const revealSection = gateContainer ? gateContainer.nextElementSibling : null;
 
-            if (everythingAfterShouldBeHidden)
-            {
-                gateHeader.style.display = 'none';
-                if (gateContainer) gateContainer.style.display = 'none';
-                if (revealSection) revealSection.classList.remove('revealed');
-            }
-            else
-            {
-                gateHeader.style.display = '';
-                if (gateContainer) gateContainer.style.display = '';
+            const gateType = gateHeader.matches('.problem') ? 'problem' : 'wait';
+            const currentMode = gateVisibilityModes[gateType];
+            let isSolved = true;
 
-                const gateType = gateHeader.matches('.problem') ? 'problem' : 'wait';
-                const currentMode = gateVisibilityModes[gateType];
-                let isSolved = true;
-
-                if (currentMode === 'hide' && gateContainer)
-                {
-                    const problemIdMatch = gateHeader.textContent.match(/問題 (\d+):/);
-                    const gateId = (gateType === 'problem' && problemIdMatch) ? problemIdMatch[1] : gateHeader.dataset.waitId;
-                    
-                    let checkButton;
-                    if (gateId)
-                    {
-                        if (gateType === 'problem')
-                        {
-                            checkButton = gateContainer.querySelector(`button[data-problem-id="${gateId}"][onclick="checkProblemAnswer(this)"]`);
-                        }
-                        else if (gateType === 'wait')
-                        {
-                            checkButton = gateContainer.querySelector(`button[data-wait-id="${gateId}"][onclick="checkWaitCondition(this)"]`);
-                        }
-                    }
-                    if (checkButton && !checkButton.disabled)
-                    {
-                        isSolved = false;
-                    }
-                }
+            if (currentMode === 'hide' && gateContainer)
+            {
+                const problemIdMatch = gateHeader.textContent.match(/問題 (\d+):/);
+                const gateId = (gateType === 'problem' && problemIdMatch) ? problemIdMatch[1] : gateHeader.dataset.waitId;
                 
-                if (isSolved)
+                let checkButton = null;
+                if (gateId)
                 {
-                    if (revealSection) revealSection.classList.add('revealed');
+                    if (gateType === 'problem')
+                    {
+                        checkButton = gateContainer.querySelector(`button[data-problem-id="${gateId}"][onclick="checkProblemAnswer(this)"]`);
+                    }
+                    else if (gateType === 'wait')
+                    {
+                        checkButton = gateContainer.querySelector(`button[data-wait-id="${gateId}"][onclick="checkWaitCondition(this)"]`);
+                    }
                 }
-                else
+                if (checkButton && !checkButton.disabled)
                 {
-                    everythingAfterShouldBeHidden = true;
-                    if (revealSection) revealSection.classList.remove('revealed');
+                    isSolved = false;
                 }
+            }
+            
+            if (revealSection)
+            {
+                revealSection.classList.toggle('revealed', isSolved);
+            }
+            if (!isSolved)
+            {
+                everythingAfterShouldBeHidden = true;
             }
         }
     });
@@ -398,15 +387,15 @@ document.addEventListener('DOMContentLoaded', () =>
     // 3. HTMLをページに描画
     outputElement.innerHTML = result.html;
     
-    // 4. DOM構造を再構築（問題セットのグループ化、今回は未使用だが将来のため残置）
+    // 3.5. DOM構造を再構築（問題セットのグループ化、今回は未使用だが将来のため残置）
     // (現在はフラットな構造なので、このステップは実質何もしない)
     
-    // 5. 最終処理
+    // 4. 最終処理
     loadProgress();
     updateScoreDisplay();
     updateContentVisibility(); 
     
-    // 6. イベントリスナー登録 & 外部ライブラリ実行
+    // 5. イベントリスナー登録 & 外部ライブラリ実行
     const problemInputs = outputElement.querySelectorAll('.problem-interactive input[type="text"]');
     problemInputs.forEach(input => {
         input.addEventListener('keydown', handleProblemInputEnter);
@@ -423,7 +412,7 @@ document.addEventListener('DOMContentLoaded', () =>
     }
     
     
-    // --- ステップ7: MathJaxの実行 ---
+    // --- ステップ6: MathJaxの実行 ---
     if (typeof window.MathJax !== 'undefined')
     {
         if (window.MathJax.typesetPromise)
