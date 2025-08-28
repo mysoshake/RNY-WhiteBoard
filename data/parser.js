@@ -1,9 +1,303 @@
-// parser.js
+// parser.js (v3.0)
+
+const DEBUG_MODE = true;
+
+// =======================================================================
+// 1. メインの変換関数
+// =======================================================================
+
+/**
+ * 生のマークダウンテキストを受け取り、HTML文字列とメタデータを返すエントリーポイント
+ * @param {string} rawText - <pre>タグから取得した生のテキスト
+ * @returns {{html: string, totalProblems: number, visibilityModes: object, initialPrefix: string}}
+ */
+function parseMarkdownToHTML(rawText)
+{
+    // この関数内でのみ使用する、解析中の状態を管理する変数
+    let currentSourceDirectory = "";
+    let currentMagicPrefix = "rny_answer::";
+    const gateVisibilityModes = { problem: 'hide', wait: 'hide' };
+    const counters = { problem: 0, wait: 0, ex: 1, eg: 1, pr: 1, as: 1 };
+    
+    // インラインマークアップ処理用の関数を定義。現在の状態を引き継ぐ。
+    const processInline = (text) => processInlineMarkup(text, { srcDir: currentSourceDirectory });
+    
+    const getListItemInfo = (lineText) =>
+    {
+        const trimmedLine = lineText.trim();
+        let match;
+        if (match = trimmedLine.match(/^@([*]{1,5})\.\s+(.*)/))
+        {
+            return { type: 'ul', level: match[1].length, content: match[2].trim() };
+        }
+        else if (match = trimmedLine.match(/^@([1]{1,5})\.\s+(.*)/))
+        {
+            return { type: 'ol', level: match[1].length, content: match[2].trim() };
+        }
+        return null;
+    };
+    
+    // --- ブロックコマンドの処理内容を定義 ---
+    const commandProcessors = {
+        "#"     : (args) => `<h1>${processInline(args[1] || '')}</h1>`,
+        "##"    : (args) => `<h2 class="generic-h2">${processInline(args[1] || '')}</h2>`,
+        "###"   : (args) => `<h3 class="generic-h3">${processInline(args[1] || '')}</h3>`,
+        "####"  : (args) => `<h4 class="generic-h4">${processInline(args[1] || '')}</h4>`,
+        "#####" : (args) => `<h5 class="generic-h5">${processInline(args[1] || '')}</h5>`,
+        "######": (args) => `<h6 class="generic-h6">${processInline(args[1] || '')}</h6>`,
+        "#cm": (args) => "",
+        "#ex": (args) => `<h2 class="explain">説明 ${counters.ex++}: ${processInline(args[1] || '')}</h2>`,
+        "#eg": (args) => `<h2 class="example">例 ${counters.eg++}: ${processInline(args[1] || '')}</h2>`,
+        "#pr": (args) => `<h2 class="practice">練習 ${counters.pr++}: ${processInline(args[1] || '')}</h2>`,
+        "#as": (args) => `<h2 class="assign">課題 ${counters.as++}: ${processInline(args[1] || '')}</h2>`,
+        "#MP": (args) =>
+        {
+            currentMagicPrefix = (args.length > 1) ? args[1] : "";
+            return "";
+        },
+        "#SC": (args) =>
+        {
+            let path = (args.length > 1) ? args[1].trim() : "";
+            if (path && !path.endsWith('/')) { path += '/'; }
+            currentSourceDirectory = path;
+            return "";
+        },
+        "#ST": (args) =>
+        {
+            if (args.length >= 3)
+            {
+                const type = args[1].toLowerCase().replace('pb', 'problem').replace('wt', 'wait');
+                const mode = args[2].toLowerCase();
+                if (Object.prototype.hasOwnProperty.call(gateVisibilityModes, type))
+                {
+                    gateVisibilityModes[type] = mode;
+                }
+            }
+            else if (args.length === 2)
+            {
+                const mode = args[1].toLowerCase();
+                if (mode === 'show' || mode === 'hide')
+                {
+                    return `<div class="visibility-marker" data-mode="${mode}"></div>`;
+                }
+            }
+            return "";
+        },
+        "#pb": (args) => createProblemHTML(args, { isSubProblem: false, counters, processInline }),
+        "##pb": (args) => createProblemHTML(args, { isSubProblem: true, counters, processInline }),
+        "#wt": (args) => createWaitGateHTML(args, { counters, processInline }),
+        "#bg": (args, rawContent) => createCodeBlockHTML(args, rawContent)
+    };
+
+    // --- メイン解析ループ ---
+    const lines = rawText.split('\n');
+    let processedHtmlLines = [];
+    let paragraphBuffer = [];
+    let listStack = [];
+    let inCodeBlock = false;
+    let codeBlockLang = '';
+    let codeBlockContent = [];
+    let inListBlock = false;
+    
+    const flushParagraphBuffer = () =>
+    {
+        if (paragraphBuffer.length > 0)
+        {
+            const paragraphText = paragraphBuffer.join('\n');
+            processedHtmlLines.push(`<p>${processInline(paragraphText).replace(/\n/g, '<br>')}</p>`);
+            paragraphBuffer = [];
+        }
+    };
+    
+    const closeListsDeeperThan = (targetLevel) => {
+        while (listStack.length > 0 && listStack[listStack.length - 1].level > targetLevel) {
+            const list = listStack.pop();
+            if (DEBUG_MODE) console.log(`[LIST] 閉じ (${list.type})レベル:${list.level}`);
+            processedHtmlLines.push(`</li></${list.type}>`);
+        }
+    };
+    
+    for (const line of lines)
+    {
+        
+        if (inCodeBlock)
+        {
+            if (line.trim() === '#ed{code}')
+            {
+                processedHtmlLines.push(commandProcessors['#bg'](['#bg', codeBlockLang], codeBlockContent.join('\n')));
+                inCodeBlock = false;
+                codeBlockContent = [];
+            }
+            else
+            {
+                codeBlockContent.push(line);
+            }
+            continue;
+        }
+        
+        const trimmedLine = line.trim();
+        
+        if (trimmedLine === "#bg{list}")
+        {
+            flushParagraphBuffer();
+            closeListsDeeperThan(-1);
+            inListBlock = true;
+            continue;
+        }
+        if (trimmedLine === "#ed{list}")
+        {
+            flushParagraphBuffer();
+            closeListsDeeperThan(-1);
+            inListBlock = false;
+            continue;
+        }
+        
+        if (trimmedLine === "")
+        {
+            flushParagraphBuffer();
+            if (!inListBlock) {
+                closeListsDeeperThan(-1);
+            }
+            continue;
+        }
+        
+        const bgMatch = trimmedLine.match(/^#bg\{code\}\{(.*?)\}/);
+        if (bgMatch)
+        {
+            flushParagraphBuffer();
+            closeListsDeeperThan(-1);
+            inCodeBlock = true;
+            codeBlockLang = bgMatch[1];
+            continue;
+        }
+
+        const args = parseCommandAndArguments(trimmedLine);
+        const listItemInfo = getListItemInfo(trimmedLine);
+        
+        if (!listItemInfo && !inListBlock)
+        {
+            closeListsDeeperThan(-1);
+        }
+        
+        if (args && commandProcessors[args[0]])
+        {
+            flushParagraphBuffer();
+            if (!inListBlock) {
+                closeListsDeeperThan(-1);
+            }
+            processedHtmlLines.push(commandProcessors[args[0]](args));
+        }
+        else if (listItemInfo)
+        {
+            flushParagraphBuffer();
+            const { type: itemType, level: itemLevel, content: itemContent } = listItemInfo;
+            const currentStackTop = listStack.length > 0 ? listStack[listStack.length - 1] : null;
+            
+            if (currentStackTop)
+            {
+                if (itemLevel < currentStackTop.level)
+                {
+                    closeListsDeeperThan(itemLevel);
+                }
+                else if (itemLevel === currentStackTop.level && itemType !== currentStackTop.type)
+                {
+                    closeListsDeeperThan(itemLevel - 1);
+                }
+                else if (itemLevel === currentStackTop.level)
+                {
+                    processedHtmlLines.push(`</li>`);
+                }
+            }
+            let lastLevelInStack = listStack.length > 0 ? listStack[listStack.length - 1].level : 0;
+            while (lastLevelInStack < itemLevel)
+            {
+                const nextListItem = { type: itemType, level: ++lastLevelInStack };
+                listStack.push(nextListItem);
+                processedHtmlLines.push(`<${itemType}>`);
+            }
+            if (DEBUG_MODE) console.log(`[LIST] 要素 (${itemType}) "${itemContent}"`);
+            processedHtmlLines.push(`<li>${processInline(itemContent)}`);
+        }
+        else
+        {
+            paragraphBuffer.push(line);
+        }
+    }
+    flushParagraphBuffer();
+    closeListsDeeperThan(-1);
+
+    return {
+        html: processedHtmlLines.join('\n'),
+        totalProblems: counters.problem,
+        visibilityModes: gateVisibilityModes,
+        initialPrefix: currentMagicPrefix
+    };
+}
+
+// =======================================================================
+// 2. ブロック要素生成ヘルパー
+// =======================================================================
+
+function createProblemHTML(args, options)
+{
+    if (args.length < 4) { return `<p style="color:red;">問題エラー: 引数不足</p>`; }
+    const problemId = ++options.counters.problem;
+    const title = options.processInline(args[1]);
+    const statement = options.processInline(args[2]).replace(/\n/g, '<br>');
+    const answers = args[3].replace(/"/g, "&quot;");
+
+    const headerTag = options.isSubProblem ? 'h3' : 'h2';
+    const headerClass = `problem ${options.isSubProblem ? 'sub-problem' : ''}`;
+    const containerClass = `problem-container ${options.isSubProblem ? 'sub-problem-container' : ''}`;
+    const headerContent = `${options.isSubProblem ? '└ ' : ''}問題 ${problemId}: ${title}`;
+
+    return `
+        <${headerTag} class="${headerClass}">${headerContent}</${headerTag}>
+        <div class="${containerClass}" data-problem-block-id="${problemId}">
+            <div class="problem-statement">${statement}</div>
+            <div class="problem-interactive">
+                <label for="problem-input-${problemId}">回答: </label>
+                <input type="text" id="problem-input-${problemId}" name="problem-input-${problemId}">
+                <button data-problem-id="${problemId}" data-answers="${answers}" onclick="checkProblemAnswer(this)">判定</button>
+                <button data-problem-id="${problemId}" onclick="skipProblem(this)" class="skip-button">諦めて飛ばす</button>
+                <span id="problem-result-${problemId}" class="problem-result"></span>
+            </div>
+        </div>`;
+}
+
+function createWaitGateHTML(args, options)
+{
+    if (args.length < 3) { return `<p style="color:red;">#wtエラー: 引数不足</p>`; }
+    const waitId = ++options.counters.wait;
+    const title = options.processInline(args[1]);
+    const bodyText = options.processInline(args[2]).replace(/\n/g, '<br>');
+    const password = args.length > 3 ? args[3].trim() : "";
+    const passwordForAttr = password.replace(/"/g, "&quot;");
+    
+    let interactiveEl = `<button data-wait-id="${waitId}" data-password="" onclick="checkWaitCondition(this)">次へ進む</button>`;
+    if (password)
+    {
+        interactiveEl = `<label for="wait-input-${waitId}">パスワード: </label><input type="text" id="wait-input-${waitId}" name="wait-input-${waitId}"><button data-wait-id="${waitId}" data-password="${passwordForAttr}" onclick="checkWaitCondition(this)">解除</button>`;
+    }
+    
+    return `<h2 class="wait-gate-title" data-wait-id="${waitId}">${title}</h2>
+        <div class="wait-gate-container" data-wait-block-id="${waitId}">
+            <div class="wait-gate-body">${bodyText}</div>
+            <div class="wait-gate-interactive">${interactiveEl}<span id="wait-result-${waitId}" class="wait-gate-result"></span></div>
+        </div>`;
+}
+
+function createCodeBlockHTML(args, rawContent)
+{
+    if (args.length < 2) return '';
+    const lang = args[1].toLowerCase();
+    return `<div class="code-block-wrapper"><pre class="line-numbers"><code class="language-${lang}">${escapeHtml(rawContent)}</code></pre></div>`;
+}
 
 
-const DEBUG_MODE = true; // デバッグモードを有効にするかどうか
-
-// --- インライン命令の構造木パーサー ---
+// =======================================================================
+// 3. インライン要素解析ヘルパー
+// =======================================================================
 
 /**
  * 単一引数を取るコマンドの引数内容と消費長を抽出するヘルパー
@@ -91,7 +385,7 @@ function parseNArgContent(text, prefix, arglen) {
         }
         
         // 最後の引数なら終了
-        if (n === arglen - 1) return { args: argslist, consumedLength: k + 1 };
+        if (n === arglen - 1) break;
         
         // 第n引数が正しく閉じられ、次に '{' が続くか
         //// {.*}が見つからない or textに続きがない or 次の文字が { ではない　→　終了
@@ -101,9 +395,55 @@ function parseNArgContent(text, prefix, arglen) {
         argHead = argEnd + 2; // '}{' の後
         argEnd = -1;
         braceLevel = 1;
-        if (DEBUG_MODE) console.log("args: ", argslist);
     }
+    if (DEBUG_MODE) console.log("[PCA] Extract args: ", argslist);
+    
+    return { args: argslist, consumedLength: k + 1 };
 }
+
+function parseCommandAndArguments(textLine) {
+    const commandMatch = textLine.match(/^([#]{1,6}(?={)|([#@][a-zA-Z0-9_-]+))\s*/);
+    if (!commandMatch) {
+        return null;
+    }
+    if(DEBUG_MODE)
+    {
+        console.log(`[PCA] Parsing command: ${commandMatch[1]} in line: ${textLine.substring(0, 100)}`);
+    }
+    const command = commandMatch[1];
+    const argsArray = [command];
+    let currentPos = commandMatch[0].length;
+    while (currentPos < textLine.length) {
+        if (textLine[currentPos] !== '{') {
+            if (argsArray.length === 1 && textLine.substring(currentPos).trim() === "") {
+                return argsArray;
+            }
+            break;
+        }
+        currentPos++;
+        let argumentContent = "";
+        let braceLevel = 1;
+        const argumentStartPos = currentPos;
+        while (currentPos < textLine.length) {
+            const char = textLine[currentPos];
+            if (char === '{') braceLevel++;
+            else if (char === '}') braceLevel--;
+            if (braceLevel === 0) {
+                argumentContent = textLine.substring(argumentStartPos, currentPos);
+                argsArray.push(argumentContent);
+                currentPos++;
+                break;
+            }
+            currentPos++;
+        }
+        if (braceLevel !== 0) {
+            console.warn(`[PCA] Unbalanced braces for '${command}'. Line: ${textLine.substring(0, 100)}`);
+            return null;
+        }
+    }
+    return argsArray;
+}
+
 
 const inlineCommandParsers = [
     { prefix: "@bf{", type: "bf", parser: (text) => parseSingleArgContent(text, "@bf{") },
@@ -145,8 +485,7 @@ function parseInlineToAST(text) {
                         node.attributes = { language: result.args[0].trim().toLowerCase() };
                         node.content = [{ type: "text", value: result.args[1] }]; // コード内容はそのままテキストノードとして扱う
                     } else if (cmdParser.type === "im") {
-                        node.link    = result.args[0];
-                        node.attributes = { alt: result.args[1], width: result.args[2], height: result.args[3] };
+                        node.attributes = { src: result.args[0], alt: result.args[1], width: result.args[2], height: result.args[3] };
                     } else { // bf, ul
                         node.content = parseInlineToAST(result.args[0]); // 内容を再帰的にパース
                     }
@@ -186,14 +525,15 @@ function parseInlineToAST(text) {
  * @param {Array<Object>} astNodes ノードの配列
  * @returns {string} 生成されたHTML文字列
  */
-function renderASTtoHTML(astNodes) {
+function renderASTtoHTML(astNodes, options = {}) {
     if (!Array.isArray(astNodes)) return '';
+    const srcDir = options.srcDir || "";
     return astNodes.map(node => {
         switch (node.type) {
             case "text":
                 return escapeHtml(node.value);
             case "bf":
-                return `<strong>${renderASTtoHTML(node.content)}</strong>`;
+                return `<strong>${renderASTtoHTML(node.content, options)}</strong>`;
             case "ul":
                 return `<span style="text-decoration:underline;">${renderASTtoHTML(node.content)}</span>`;
             case "cl":
@@ -209,7 +549,15 @@ function renderASTtoHTML(astNodes) {
                 const code = node.content && node.content[0] && node.content[0].type === "text" ? escapeHtml(node.content[0].value) : '';
                 return `<code class="language-${lang}">${code}</code>`;
             case "im":
-                return `<img src="${node.link}" alt="${node.attributes.alt}" width=${node.attributes.width} height=${node.attributes.height}>`;
+                let src = node.attributes.src;
+                if (srcDir && !/^(https|http|\/|\.\/)/.test(src))
+                {
+                    src = escapeHtml(srcDir + src);
+                }
+                const alt = escapeHtml(node.attributes.alt);
+                const width = escapeHtml(node.attributes.width);
+                const height = escapeHtml(node.attributes.height);
+                return `<img src="${src}" alt="${alt}" width=${width} height=${height}>`;
             default:
                 console.warn("Unknown AST node type:", node.type);
                 return '';
@@ -218,64 +566,17 @@ function renderASTtoHTML(astNodes) {
 }
 
 // --- processInlineMarkup 関数 ---
-function processInlineMarkup(text) {
-    if (typeof text !== 'string' || text.trim() === '') {
-        // 元のテキストがプレーンテキストのみ、または空の場合、エスケープだけして返す
-        // (プレースホルダーなどを壊さないように、ASTパーサーを通すのは @ が含まれる場合のみにするなど工夫も可能)
-        // ここでは、すべてのテキストをASTパーサーに通す方針とする。
-        // ただし、@ が全く含まれないテキストならASTパーサーは単一のtextノードを返すはず。
-        if (!text.includes('@')) { // 簡単な最適化: @ がなければコマンドはない
-             return escapeHtml(text);
-        }
+function processInlineMarkup(text, options = {}) {
+    // 元のテキストがプレーンテキストのみ、または空の場合、エスケープだけして返す
+    if (typeof text !== 'string' || text.trim() === '' || !text.includes('@')) {
+        return escapeHtml(text);
     }
+    
     try {
         const ast = parseInlineToAST(text);
-        return renderASTtoHTML(ast);
+        return renderASTtoHTML(ast, options);
     } catch (e) {
         console.error("Error during inline AST parsing or rendering:", e, "Input text:", text);
-        return escapeHtml(text); // エラー時はエスケープした元テキストを返す
+        return escapeHtml(text); 
     }
-}
-
-function parseCommandAndArguments(textLine) {
-    const commandMatch = textLine.match(/^([#]{1,3}(?={)|([#@][a-zA-Z0-9_-]+))\s*/);
-    if (!commandMatch) {
-        return null;
-    }
-    if(DEBUG_MODE)
-    {
-        console.log(`[PCA] Parsing command: ${commandMatch[1]} in line: ${textLine.substring(0, 100)}`);
-    }
-    const command = commandMatch[1];
-    const argsArray = [command];
-    let currentPos = commandMatch[0].length;
-    while (currentPos < textLine.length) {
-        if (textLine[currentPos] !== '{') {
-            if (argsArray.length === 1 && textLine.substring(currentPos).trim() === "") {
-                return argsArray;
-            }
-            break;
-        }
-        currentPos++;
-        let argumentContent = "";
-        let braceLevel = 1;
-        const argumentStartPos = currentPos;
-        while (currentPos < textLine.length) {
-            const char = textLine[currentPos];
-            if (char === '{') braceLevel++;
-            else if (char === '}') braceLevel--;
-            if (braceLevel === 0) {
-                argumentContent = textLine.substring(argumentStartPos, currentPos);
-                argsArray.push(argumentContent);
-                currentPos++;
-                break;
-            }
-            currentPos++;
-        }
-        if (braceLevel !== 0) {
-            console.warn(`[PCA] Unbalanced braces for '${command}'. Line: ${textLine.substring(0, 100)}`);
-            return null;
-        }
-    }
-    return argsArray;
 }
