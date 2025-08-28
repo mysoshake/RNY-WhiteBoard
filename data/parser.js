@@ -26,17 +26,41 @@ function parseMarkdownToHTML(rawText)
     {
         const trimmedLine = lineText.trim();
         let match;
+        
+        // 箇条書きリスト (@*., @**., ...)
         if (match = trimmedLine.match(/^@([*]{1,5})\.\s+(.*)/))
         {
-            return { type: 'ul', level: match[1].length, content: match[2].trim() };
+            return { style: 'disc', type: 'ul', level: match[1].length, content: match[2].trim() };
         }
-        else if (match = trimmedLine.match(/^@([1]{1,5})\.\s+(.*)/))
+        
+        // 番号付きリスト (@1., @i., @A., @あ. ...)
+        const olMatch = trimmedLine.match(/^@([1iIいイaAあア一壱]{1,5})\.\s+(.*)/);
+        if (olMatch)
         {
-            return { type: 'ol', level: match[1].length, content: match[2].trim() };
+            const marker = olMatch[1];
+            const level = marker.length;
+            const firstChar = marker[0];
+            
+            // CSSの list-style-type に対応するスタイルを決定
+            const styleMap = {
+                '1': 'decimal',
+                'i': 'lower-roman',
+                'I': 'upper-roman',
+                'a': 'lower-alpha',
+                'A': 'upper-alpha',
+                'あ': 'hiragana',
+                'い': 'hiragana-iroha',
+                'ア': 'katakana',
+                'イ': 'katakana-iroha',
+                '一': 'cjk-ideographic',
+                '壱': 'disclosure-open' // 伝統的な漢数字はCSS標準にないため、代替スタイル
+            };
+            
+            return { style: styleMap[firstChar] || 'decimal', type: 'ol', level: level, content: olMatch[2].trim() };
         }
+
         return null;
-    };
-    
+    };    
     // --- ブロックコマンドの処理内容を定義 ---
     const commandProcessors = {
         "#"     : (args) => `<h1>${processInline(args[1] || '')}</h1>`,
@@ -110,11 +134,14 @@ function parseMarkdownToHTML(rawText)
     };
     
     const closeListsDeeperThan = (targetLevel) => {
+        let nextTopLevelStyle = null;
         while (listStack.length > 0 && listStack[listStack.length - 1].level > targetLevel) {
             const list = listStack.pop();
-            if (DEBUG_MODE) console.log(`[LIST] 閉じ (${list.type})レベル:${list.level}`);
+            if (DEBUG_MODE) console.log(`[LIST] 閉じ (${list.style} of ${list.type})レベル:${list.level}`);
             processedHtmlLines.push(`</li></${list.type}>`);
+            if (listStack.length > 0) nextTopLevelStyle = listStack[listStack.length - 1].style;
         }
+        return nextTopLevelStyle;
     };
     
     for (const line of lines)
@@ -190,16 +217,20 @@ function parseMarkdownToHTML(rawText)
         else if (listItemInfo)
         {
             flushParagraphBuffer();
-            const { type: itemType, level: itemLevel, content: itemContent } = listItemInfo;
+            const { style: itemStyle, type: itemType, level: itemLevel, content: itemContent } = listItemInfo;
             const currentStackTop = listStack.length > 0 ? listStack[listStack.length - 1] : null;
             
             if (currentStackTop)
             {
                 if (itemLevel < currentStackTop.level)
                 {
-                    closeListsDeeperThan(itemLevel);
+                    const currentStyle = closeListsDeeperThan(itemLevel);
+                    if (currentStyle !== itemStyle)
+                    {
+                        closeListsDeeperThan(itemLevel - 1);
+                    }
                 }
-                else if (itemLevel === currentStackTop.level && itemType !== currentStackTop.type)
+                else if (itemLevel === currentStackTop.level && itemStyle !== currentStackTop.style)
                 {
                     closeListsDeeperThan(itemLevel - 1);
                 }
@@ -211,9 +242,18 @@ function parseMarkdownToHTML(rawText)
             let lastLevelInStack = listStack.length > 0 ? listStack[listStack.length - 1].level : 0;
             while (lastLevelInStack < itemLevel)
             {
-                const nextListItem = { type: itemType, level: ++lastLevelInStack };
+                const listTag = (typ) => {
+                    if (typ === 'ol') {
+                        return `<ol style="list-style-type: ${itemStyle};">`;
+                    }
+                    else {
+                        return `<${typ}>`;
+                    }
+                };
+                processedHtmlLines.push(listTag(itemType));
+                
+                const nextListItem = { type: itemType, style: itemStyle, level: ++lastLevelInStack };
                 listStack.push(nextListItem);
-                processedHtmlLines.push(`<${itemType}>`);
             }
             if (DEBUG_MODE) console.log(`[LIST] 要素 (${itemType}) "${itemContent}"`);
             processedHtmlLines.push(`<li>${processInline(itemContent)}`);
