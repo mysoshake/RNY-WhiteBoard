@@ -358,6 +358,12 @@ function createCodeBlockHTML(args, rawContent)
 // 3. インライン要素解析ヘルパー
 // =======================================================================
 
+function parseZeroArgContent(text, prefix) {
+    if (!text.startsWith(prefix)) return null;
+    let argStart = prefix.length;
+    return { args: [], consumedLength: argStart };
+}
+
 /**
  * 単一引数を取るコマンドの引数内容と消費長を抽出するヘルパー
  * 例: @bf{content} -> { args: ["content"], consumedLength: total_length_of_@bf{content} }
@@ -505,6 +511,7 @@ function parseCommandAndArguments(textLine) {
 
 
 const inlineCommandParsers = [
+    { prefix: "@br" , type: "br", parser: (text) => parseZeroArgContent(text, "@br") },
     { prefix: "@bf{", type: "bf", parser: (text) => parseSingleArgContent(text, "@bf{") },
     { prefix: "@ul{", type: "ul", parser: (text) => parseSingleArgContent(text, "@ul{") },
     { prefix: "@cl{", type: "cl", parser: (text) => parseTwoArgContent(text, "@cl{") },
@@ -545,6 +552,8 @@ function parseInlineToAST(text) {
                         node.content = [{ type: "text", value: result.args[1] }]; // コード内容はそのままテキストノードとして扱う
                     } else if (cmdParser.type === "im") {
                         node.attributes = { src: result.args[0], alt: result.args[1], width: result.args[2], height: result.args[3] };
+                    } else if (cmdParser.type === "br") {
+                        node.content = [];
                     } else { // bf, ul
                         node.content = parseInlineToAST(result.args[0]); // 内容を再帰的にパース
                     }
@@ -591,6 +600,8 @@ function renderASTtoHTML(astNodes, options = {}) {
         switch (node.type) {
             case "text":
                 return escapeHtml(node.value);
+            case "br":
+                return `<br>`;
             case "bf":
                 return `<strong>${renderASTtoHTML(node.content, options)}</strong>`;
             case "ul":
