@@ -19,6 +19,8 @@ function parseMarkdownToHTML(rawText)
     const gateVisibilityModes = { problem: 'hide', wait: 'hide' };
     const counters = { problem: 0, wait: 0, ex: 1, eg: 1, pr: 1, as: 1 };
     
+    let currentCooldownForProblems = BASE_COOLDOWN_MS;
+    
     // インラインマークアップ処理用の関数を定義。現在の状態を引き継ぐ。
     const processInline = (text) => processInlineMarkup(text, { srcDir: currentSourceDirectory });
     
@@ -117,6 +119,7 @@ function parseMarkdownToHTML(rawText)
                 if(!isNaN(new_cooldown_ms))
                 {
                     cooldown_ms = new_cooldown_ms;
+                    currentCooldownForProblems = new_cooldown_ms;
                 }
                 else
                 {
@@ -126,8 +129,8 @@ function parseMarkdownToHTML(rawText)
             // このコマンドは画面には何も表示しない
             return ""; 
         },
-        "#pb": (args) => createProblemHTML(args, { isSubProblem: false, counters, processInline }),
-        "##pb": (args) => createProblemHTML(args, { isSubProblem: true, counters, processInline }),
+        "#pb": (args) => createProblemHTML(args, { isSubProblem: false, counters, processInline, cooldown_ms: currentCooldownForProblems }),
+        "##pb": (args) => createProblemHTML(args, { isSubProblem: true, counters, processInline, cooldown_ms: currentCooldownForProblems }),
         "#wt": (args) => createWaitGateHTML(args, { counters, processInline }),
         "#bg": (args, rawContent) => createCodeBlockHTML(args, rawContent)
     };
@@ -309,6 +312,7 @@ function createProblemHTML(args, options)
     const headerClass = `problem ${options.isSubProblem ? 'sub-problem' : ''}`;
     const containerClass = `problem-container ${options.isSubProblem ? 'sub-problem-container' : ''}`;
     const headerContent = `${options.isSubProblem ? '└ ' : ''}問題 ${problemId}: ${title}`;
+    const cooldown_ms = options.cooldown_ms || BASE_COOLDOWN_MS;
 
     return `
         <${headerTag} class="${headerClass}">${headerContent}</${headerTag}>
@@ -318,7 +322,7 @@ function createProblemHTML(args, options)
                 <label for="problem-input-${problemId}">回答: </label>
                 <input type="text" id="problem-input-${problemId}" name="problem-input-${problemId}">
                 <button data-problem-id="${problemId}" data-answers="${answers}" onclick="checkProblemAnswer(this)">判定</button>
-                <button data-problem-id="${problemId}" onclick="skipProblem(this)" class="skip-button">諦めて飛ばす</button>
+                <button data-problem-id="${problemId}" onclick="skipProblem(this)" class="skip-button" data-cooldown="${cooldown_ms}">諦めて飛ばす</button>
                 <span id="problem-result-${problemId}" class="problem-result"></span>
             </div>
         </div>`;
