@@ -238,7 +238,7 @@ function handleWaitInputEnter(event)
 // 問題スキップ用関数
 function skipProblem(buttonElement)
 {   
-    const currentCooldown = parseInt(buttonElement.dataset.cooldown_ms, 10) || BASE_COOLDOWN_MS;
+    const currentCooldown = parseInt(buttonElement.dataset.cooldown, 10) || BASE_COOLDOWN_MS;
     const cooldownInSeconds = Math.floor(currentCooldown / 1000);
     
     const confMessage = () => {
