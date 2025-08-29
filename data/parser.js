@@ -136,7 +136,19 @@ function parseMarkdownToHTML(rawText)
     };
 
     // --- メイン解析ループ ---
-    const lines = rawText.split('\n');
+    const textWithPlaceholders = preprocessPlaceholder(rawText);  //事前に MathJax数式環境を プレースホルダー化
+    
+    if(DEBUG_MODE)
+    {
+        console.log("[MATH JAX] --- Math Placeholders Check ---");
+        console.log("[MATH JAX] Found", mathPlaceholders.size, "math elements.");
+        mathPlaceholders.forEach((latex, placeholder) => {
+            console.log(`[MATH JAX] ${placeholder}  =>  ${latex}`);
+        });
+        console.log("[MATH JAX] -----------------------------");
+    }
+        
+    const lines = textWithPlaceholders.split('\n');
     let processedHtmlLines = [];
     let paragraphBuffer = [];
     let listStack = [];
@@ -287,9 +299,12 @@ function parseMarkdownToHTML(rawText)
     }
     flushParagraphBuffer();
     closeListsDeeperThan(-1);
-
+    
+    let finalHtml = processedHtmlLines.join('\n');
+    finalHtml = restorePlaceholder(finalHtml);
+    
     return {
-        html: processedHtmlLines.join('\n'),
+        html: finalHtml,
         totalProblems: counters.problem,
         visibilityModes: gateVisibilityModes,
         initialPrefix: currentMagicPrefix
@@ -642,9 +657,12 @@ function renderASTtoHTML(astNodes, options = {}) {
 // --- processInlineMarkup 関数 ---
 function processInlineMarkup(text, options = {}) {
     // 元のテキストがプレーンテキストのみ、または空の場合、エスケープだけして返す
-    if (typeof text !== 'string' || text.trim() === '' || !text.includes('@')) {
+    if (typeof text !== 'string' || text.trim() === '') {
         return escapeHtml(text);
     }
+    // if (typeof text !== 'string' || text.trim() === '' || !text.includes('@')) {
+    //     return escapeHtml(text);
+    // }
     
     try {
         const ast = parseInlineToAST(text);
@@ -653,4 +671,49 @@ function processInlineMarkup(text, options = {}) {
         console.error("Error during inline AST parsing or rendering:", e, "Input text:", text);
         return escapeHtml(text); 
     }
+}
+
+/**
+ * 数式をプレースホルダーに置き換える事前処理関数
+ * @param {string} text - 生のソーステキスト
+ * @returns {string} - 数式がプレースホルダーに置き換えられたテキスト
+ */
+function preprocessPlaceholder(text)
+{
+    mathPlaceholders.clear(); // グローバルなMapをクリア
+    let mathIndex = 0;
+    
+    // コールバック関数を共通化
+    const placeholderCallback = (match) => {
+        const placeholder = `%%MATH_PLACEHOLDER_${mathIndex++}%%`;
+        mathPlaceholders.set(placeholder, match);
+        return placeholder;
+    };
+
+    // 1. Display Math ($$ ... $$) 
+    text = text.replace(/\$\$([\s\S]*?)\$\$/g, placeholderCallback);
+    text = text.replace(/\\\[([\s\S]*?)\\\]/g, placeholderCallback);
+    text = text.replace(/\\begin\{equation\}([\s\S]*?)\\end\{equation\}/g, placeholderCallback);
+    
+    // 2. Inline Math ($ ... $) 
+    text = text.replace(/(?<!\\)\$((?:\\.|[^$])+?)(?<!\\)\$/g, placeholderCallback);
+    text = text.replace(/\\\(([\s\S]*?)\\\)/g, placeholderCallback);
+    text = text.replace(/@eq\{([\s\S]*?)\}/g, placeholderCallback);
+    
+    return text;
+}
+
+/**
+ * プレースホルダーを元の数式に戻す事後処理関数
+ * @param {string} html - HTMLに変換済みの文字列
+ * @returns {string} - プレースホルダーが元の数式に戻されたHTML
+ */
+function restorePlaceholder(html)
+{
+    mathPlaceholders.forEach((latex, placeholder) =>
+    {
+        const regex = new RegExp(placeholder, 'g');
+        html = html.replace(regex, () => latex);
+    });
+    return html;
 }

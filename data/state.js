@@ -1,16 +1,16 @@
 // state.js
 
-
 // --- 定数 ---
 const STORAGE_KEY_PREFIX = 'ProgramRnyKey_';
 const SCORE_CLICK_THRESHOLD = 7;
+const DISPLAY_MATH_MARKER = [['$$', '$$'], ['\\[', '\\]'], ['\\begin{equation}', '\\end{equation}']];
+const INLINE_MATH_MARKER = [['$', '$'], ['\\(', '\\)'], ['@eq{', '}']];
 
 // --- 状態変数 (モジュール内スコープ) ---
 let scoreAreaClickCount = 0;
 let correctProblemsCount = 0;
 let totalProblemsCount = 0;
 let skipCount = 0;
-const inlineCodePlaceholders = new Map(); // sインラインコード用
 
 function getStorageKey() {
     const pathname = window.location.pathname;

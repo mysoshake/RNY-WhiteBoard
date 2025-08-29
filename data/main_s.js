@@ -3,6 +3,7 @@
 // --- グローバル変数 ---
 const mathPlaceholders   = new Map(); // DOMContentLoaded内でクリア/使用
 const rawCodeSnippets    = new Map(); // コードスニペット保存用 Map を追加
+
 let rawCodeSnippetIndex  = 0;         // コードスニペット用インデックス
 let currentMagicPrefix = "rny_answer::";
 const BASE_COOLDOWN_MS = 1000; //デフォルトのクールダウン時間(1秒),
@@ -383,6 +384,20 @@ function checkProblemAnswer(buttonElement)
 }
 
 
+function initMathJax()
+{
+    const script = document.createElement('script');
+    if (navigator.userAgent.includes("Chrome") || navigator.userAgent.includes("Firefox")) {
+        script.src = "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js";
+    }
+    else {
+        script.src = "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js";
+    }
+    script.async = true;
+    document.head.appendChild(script);
+}
+
+
 // =======================================================================
 // 2. メイン処理 (ページの読み込み完了時に実行)
 // =======================================================================
@@ -443,60 +458,50 @@ document.addEventListener('DOMContentLoaded', () =>
         if (DEBUG_MODE) console.error("エラー: スコア一覧のHTML要素(#score-counter)が見つかりません。");
     }
     
+    window.MathJax = {
+        tex: {
+            inlineMath: INLINE_MATH_MARKER,
+            displayMath: DISPLAY_MATH_MARKER
+        },
+        svg: {
+            fontCache: 'global'
+        }
+    };
     
-    // --- ステップ6: MathJaxの実行 ---
-    if (typeof window.MathJax !== 'undefined')
+    // --- ステップ6: MathJax と Prism の実行 ---
+    // MathJaxの準備が完了するのを待つためのPromise
+    initMathJax();
+
+    if (window.MathJax && window.MathJax.startup)
     {
-        if (window.MathJax.typesetPromise)
-        { // MathJax 3.x
-            window.MathJax.typesetPromise([outputElement])
-                .catch((err) => console.error('MathJax typesetPromise failed:', err));
-        }
-        else if (window.MathJax.Hub)
-        { // MathJax 2.x
-            window.MathJax.Hub.Queue(["Typeset", window.MathJax.Hub, outputElement]);
-        }
-    }
-    else
-    {
-        console.warn("MathJax library is not loaded.");
-    }
-    // ▼▼▼ MathJax実行の後にPrism.jsのハイライト処理を追加 ▼▼▼
-    if (typeof window.MathJax !== 'undefined')
-    {
-        if (window.MathJax.typesetPromise)
-        {
-            window.MathJax.typesetPromise([outputElement])
-                .then(() =>
+        window.MathJax.startup.promise
+            .then(() =>
+            {
+                console.log("MathJax is ready. Typesetting math...");
+                // MathJaxの準備ができたので、数式をレンダリングする
+                return window.MathJax.typesetPromise([outputElement]);
+            })
+            .then(() =>
+            {
+                console.log("MathJax finished. Highlighting code with Prism...");
+                // MathJaxの処理が終わった後にPrismを実行する
+                if (typeof window.Prism !== 'undefined')
                 {
-                    // MathJaxの処理が終わった後にPrismを実行
-                    if (typeof window.Prism !== 'undefined')
-                    {
-                        window.Prism.highlightAllUnder(outputElement);
-                    }
-                })
-                .catch((err) => console.error('MathJax typesetPromise failed:', err));
-        }
-        else if (window.MathJax.Hub)
-        { // MathJax 2.x
-            window.MathJax.Hub.Queue(
-                ["Typeset", window.MathJax.Hub, outputElement],
-                () =>
-                { // MathJaxの処理が終わった後にPrismを実行するコールバック
-                    if (typeof window.Prism !== 'undefined')
-                    {
-                        window.Prism.highlightAllUnder(outputElement);
-                    }
+                    window.Prism.highlightAllUnder(outputElement);
                 }
-            );
-        }
+            })
+            .catch((err) =>
+            {
+                console.error("An error occurred during MathJax typesetting or Prism highlighting:", err);
+            });
     }
     else
-    { // MathJaxがない場合は直接Prismを実行
+    {
+        // MathJaxがない場合は直接Prismを実行
+        console.log("MathJax library not found. Running Prism directly.");
         if (typeof window.Prism !== 'undefined')
         {
             window.Prism.highlightAllUnder(outputElement);
         }
-        console.warn("MathJax library is not loaded.");
     }
 });
