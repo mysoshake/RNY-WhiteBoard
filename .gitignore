@@ -3,3 +3,5 @@
 
 !answer_generator.html
 *.note
+
+*.code-workspace
