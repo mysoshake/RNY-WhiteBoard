@@ -52,6 +52,19 @@ function setTotalProblemsCount(newTotal) {
     updateScoreDisplay();
 }
 
+function decodeAnswer(encodedAns, prefix)
+{
+    if (DEBUG_MODE) console.log(`[SOLVED] dataset=`, checkButton.dataset);
+    
+    const answerTexts = checkButton.dataset.answers.split(',').map((ans) => {
+        decodeURIComponent(escape(atob(ans).trim())).slice(currentMagicPrefix.length)
+    });
+    
+    if (DEBUG_MODE) console.log(`[SOLVED] ansText=`, answerTexts);
+    
+    return answerTexts;
+}
+
 function getSolvedAnswers()
 {
     const solvedItems = [];
@@ -65,16 +78,10 @@ function getSolvedAnswers()
         {
             // 対応する判定ボタンを取得
             const checkButton = container.querySelector(`button[data-problem-id="${problemId}"][onclick="checkProblemAnswer(this)"]`);
+            const answerTexts = decodeAnswer(checkButton.dataset.answers, currentMagicPrefix);
 
-            // ボタンが無効化（disabled）されていれば「解決済み」とみなす
             if (checkButton && checkButton.disabled)
             {
-                if (DEBUG_MODE) console.log(`[SOLVED] dataset=`, checkButton.dataset);
-                
-                const answerTexts = checkButton.dataset.answers.split(',').map((ans) =>
-                    decodeURIComponent(escape(atob(ans).trim())).slice(currentMagicPrefix.length));
-                if (DEBUG_MODE) console.log(`[SOLVED] ansText=`, answerTexts);
-            
                 solvedItems.push({
                     id: `問題-${problemId}`,
                     ans: answerTexts
@@ -88,16 +95,10 @@ function getSolvedAnswers()
         {
             // 対応する解除ボタンを取得
             const checkButton = container.querySelector(`button[data-wait-id="${waitId}"][onclick="checkWaitCondition(this)"]`);
+            const answerTexts = decodeAnswer(checkButton.dataset.password, currentMagicPrefix);
 
-            // ボタンが無効化されていれば「解決済み」とみなす
             if (checkButton && checkButton.disabled)
             {
-                const answerTexts = checkButton.dataset.password.split(',').map((ans) =>
-                    decodeURIComponent(escape(atob(ans).trim())).slice(currentMagicPrefix.length));
-                
-                if (DEBUG_MODE) console.log(`[SOLVED] `, checkButton.dataset);
-                if (DEBUG_MODE) console.log(`[SOLVED] answerText=${answerTexts}`);
-                
                 solvedItems.push({
                     id: `待機-${waitId}`,
                     ans: answerTexts
