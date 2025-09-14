@@ -71,11 +71,8 @@ function getSolvedAnswers()
             {
                 if (DEBUG_MODE) console.log(`[SOLVED] dataset=`, checkButton.dataset);
                 
-                const answerTexts = checkButton.dataset.answers.split(',').map((ans) => {
-                    const raw_answer = decodeURIComponent(escape(atob(ans).trim())).slice(currentMagicPrefix.length);
-                    // const raw_answer = atob(ans).slice(currentMagicPrefix.length);
-                    return raw_answer;
-                });
+                const answerTexts = checkButton.dataset.password.split(',').map((ans) =>
+                    decodeURIComponent(escape(atob(ans).trim())).slice(currentMagicPrefix.length));
                 if (DEBUG_MODE) console.log(`[SOLVED] ansText=`, answerTexts);
             
                 solvedItems.push({
@@ -95,7 +92,6 @@ function getSolvedAnswers()
             // ボタンが無効化されていれば「解決済み」とみなす
             if (checkButton && checkButton.disabled)
             {
-                // 待機ゲートには明確な「答え」がないため、タイトルを表示
                 const answerTexts = checkButton.dataset.password.split(',').map((ans) =>
                     decodeURIComponent(escape(atob(ans).trim())).slice(currentMagicPrefix.length));
                 
