@@ -71,7 +71,7 @@ function getSolvedAnswers()
             {
                 if (DEBUG_MODE) console.log(`[SOLVED] dataset=`, checkButton.dataset);
                 
-                const answerTexts = checkButton.dataset.password.split(',').map((ans) =>
+                const answerTexts = checkButton.dataset.answers.split(',').map((ans) =>
                     decodeURIComponent(escape(atob(ans).trim())).slice(currentMagicPrefix.length));
                 if (DEBUG_MODE) console.log(`[SOLVED] ansText=`, answerTexts);
             
