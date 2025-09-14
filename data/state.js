@@ -11,6 +11,7 @@ let scoreAreaClickCount = 0;
 let correctProblemsCount = 0;
 let totalProblemsCount = 0;
 let skipCount = 0;
+let isSidebarVisible = true;
 
 function getStorageKey() {
     const pathname = window.location.pathname;
@@ -19,6 +20,16 @@ function getStorageKey() {
     // ファイル名が空の場合 (例: ルートディレクトリにアクセスした場合) は 'index' を使う
     const baseKey = filename || 'index';
     return `${STORAGE_KEY_PREFIX}${baseKey}`; // プレフィックス + ファイル名
+}
+
+function getSidebarVisibility()
+{
+    return isSidebarVisible;
+}
+
+function toggleSidebarVisibility()
+{
+    isSidebarVisible = !isSidebarVisible;
 }
 
 // --- 状態変数アクセサ/更新関数 ---
@@ -106,6 +117,7 @@ function resetScoreAndProblems() {
     totalProblemsCount = 0; // 全問題数もリセットする場合
     scoreAreaClickCount = 0;
     skipCount = 0;
+    isSidebarVisible = true;
     updateScoreDisplay();
 }
 
@@ -170,7 +182,8 @@ function saveProgress() {
         skipCount: skipCount,
         problemStates: problemStates,
         waitStates: waitStates,
-        revealedSections: revealedSectionsData
+        revealedSections: revealedSectionsData,
+        isSidebarVisible: isSidebarVisible
     };
     try {
         localStorage.setItem(getStorageKey(), JSON.stringify(appData));
@@ -259,6 +272,7 @@ function loadProgress()
         console.error("ローカルストレージからの読み込みまたは解析に失敗しました:", e);
         correctProblemsCount = 0;
         skipCount = 0;
+        isSidebarVisible = appData.isSidebarVisible !== false;
         solvedAnswers = [];
         updateScoreDisplay();
     }

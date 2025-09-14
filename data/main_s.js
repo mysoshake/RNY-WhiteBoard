@@ -418,6 +418,26 @@ function initMathJax()
     document.head.appendChild(script);
 }
 
+function applySidebarState()
+{
+    const wrapper = document.getElementById('sidebar-wrapper'); 
+    const toggleBtn = document.getElementById('sidebar-toggle-btn');
+    
+    if (!wrapper || !toggleBtn) return;
+
+    if (getSidebarVisibility())
+    {
+        document.body.classList.add('sidebar-is-open');
+        wrapper.classList.remove('hidden'); 
+        toggleBtn.textContent = '›';
+    }
+    else
+    {
+        document.body.classList.remove('sidebar-is-open');
+        wrapper.classList.add('hidden'); 
+        toggleBtn.textContent = '‹';
+    }
+}
 
 // =======================================================================
 // 2. メイン処理 (ページの読み込み完了時に実行)
@@ -439,9 +459,12 @@ document.addEventListener('DOMContentLoaded', () =>
     }
     
     const dynamicElementsHTML = `
-        <div id="answer-sidebar">
-            <h3>正解一覧</h3>
-            <ul id="answer-list"></ul>
+        <div id="sidebar-wrapper">
+            <button id="sidebar-toggle-btn" title="サイドバーを開閉">›</button>
+            <div id="answer-sidebar">
+                <h3>正解一覧</h3>
+                <ul id="answer-list"></ul>
+            </div>
         </div>
         <div id="score-counter">
             正解数: <span id="correct-answers-count">0</span> 
@@ -470,6 +493,7 @@ document.addEventListener('DOMContentLoaded', () =>
     updateScoreDisplay();
     updateContentVisibility(); 
     updateAnswerSidebarDisplay();
+    applySidebarState();
     
     // 5. イベントリスナー登録 & 外部ライブラリ実行
     const allInputs = outputElement.querySelectorAll('.problem-interactive input[type="text"], .wait-gate-interactive input[type="text"]');
@@ -486,6 +510,19 @@ document.addEventListener('DOMContentLoaded', () =>
     else
     {
         if (DEBUG_MODE) console.error("[SCORE] エラー: スコア一覧のHTML要素(#score-counter)が見つかりません。");
+    }
+    
+    const toggleBtn = document.getElementById('sidebar-toggle-btn');
+    if (toggleBtn)
+    {
+        toggleBtn.addEventListener('click', () => {
+            // 状態を反転
+            toggleSidebarVisibility();
+            // DOMに状態を反映
+            applySidebarState();
+            // 新しい状態を保存
+            saveProgress();
+        });
     }
     
     window.MathJax = {
