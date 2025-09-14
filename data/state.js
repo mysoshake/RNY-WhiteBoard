@@ -52,39 +52,7 @@ function setTotalProblemsCount(newTotal) {
     updateScoreDisplay();
 }
 
-/**
- * エンコードされた単一の答えをデコードして返す内部ヘルパー関数
- * @param {string} encodedAns - エンコードされた答えの文字列
- * @param {string} prefix - マジックプレフィックス
- * @returns {string} デコードされた答え
- */
-function _decodeAnswer(encodedAns, prefix) {
-    if (!encodedAns)
-    {
-        return '';
-    }
-    try
-    {
-        // trim()で前後の空白を除去してからデコード
-        const decodedWithPrefix = decodeURIComponent(escape(atob(encodedAns.trim())));
-        if (decodedWithPrefix.startsWith(prefix))
-        {
-            return decodedWithPrefix.substring(prefix.length);
-        }
-        return decodedWithPrefix; // プレフィックスがない場合のフォールバック
-    }
-    catch (e)
-    {
-        console.error('Failed to decode answer:', encodedAns, e);
-        return '[デコードエラー]';
-    }
-}
-
-/**
- * DOMの状態を読み取り、解決済みの問題リストを動的に生成する
- * @param {string} prefix - 答えのデコードに使用するマジックプレフィックス
- */
-function getSolvedAnswers(prefix)
+function getSolvedAnswers()
 {
     const solvedItems = [];
     
@@ -95,18 +63,24 @@ function getSolvedAnswers(prefix)
         const problemId = container.dataset.problemBlockId;
         if (problemId)
         {
-            const checkButton = container.querySelector(`button[data-problem-id="${problemId}"]`);
-            // ボタンが無効化されていれば「解決済み」
+            // 対応する判定ボタンを取得
+            const checkButton = container.querySelector(`button[data-problem-id="${problemId}"][onclick="checkProblemAnswer(this)"]`);
+
+            // ボタンが無効化（disabled）されていれば「解決済み」とみなす
             if (checkButton && checkButton.disabled)
             {
-                const encodedAnswersString = checkButton.dataset.answers || '';
-                const allAnswersText = encodedAnswersString.split(',')
-                    .map(ans => _decodeAnswer(ans, prefix)) // 安全なヘルパー関数を使用
-                    .join(', ');
-
+                if (DEBUG_MODE) console.log(`[SOLVED] dataset=`, checkButton.dataset);
+                
+                const answerTexts = checkButton.dataset.answers.split(',').map((ans) => {
+                    const raw_answer = decodeURIComponent(escape(atob(ans).trim())).slice(currentMagicPrefix.length);
+                    // const raw_answer = atob(ans).slice(currentMagicPrefix.length);
+                    return raw_answer;
+                });
+                if (DEBUG_MODE) console.log(`[SOLVED] ansText=`, answerTexts);
+            
                 solvedItems.push({
                     id: `問題-${problemId}`,
-                    ans: allAnswersText
+                    ans: answerTexts
                 });
             }
         }
@@ -115,14 +89,22 @@ function getSolvedAnswers(prefix)
         const waitId = container.dataset.waitBlockId;
         if (waitId)
         {
-            const checkButton = container.querySelector(`button[data-wait-id="${waitId}"]`);
+            // 対応する解除ボタンを取得
+            const checkButton = container.querySelector(`button[data-wait-id="${waitId}"][onclick="checkWaitCondition(this)"]`);
+
+            // ボタンが無効化されていれば「解決済み」とみなす
             if (checkButton && checkButton.disabled)
             {
-                const answerText = _decodeAnswer(checkButton.dataset.password, prefix); // 安全なヘルパー関数を使用
+                // 待機ゲートには明確な「答え」がないため、タイトルを表示
+                const answerTexts = checkButton.dataset.password.split(',').map((ans) =>
+                    decodeURIComponent(escape(atob(ans).trim())).slice(currentMagicPrefix.length));
+                
+                if (DEBUG_MODE) console.log(`[SOLVED] `, checkButton.dataset);
+                if (DEBUG_MODE) console.log(`[SOLVED] answerText=${answerTexts}`);
                 
                 solvedItems.push({
                     id: `待機-${waitId}`,
-                    ans: answerText
+                    ans: answerTexts
                 });
             }
         }
@@ -130,7 +112,6 @@ function getSolvedAnswers(prefix)
 
     return solvedItems;
 }
-
 function resetScoreAndProblems() {
     correctProblemsCount = 0;
     totalProblemsCount = 0; // 全問題数もリセットする場合
