@@ -56,7 +56,7 @@ function decodeAnswer(encodedAns, prefix)
 {
     const answerTexts = encodedAns.split(',').map((ans) => {
         
-        const trimmed = atob(ans).trim();
+        const trimmed = atob(ans.trim());
         if (DEBUG_MODE) console.log("[DECODE] trimmed:", trimmed);
         
         const escaped = escape(trimmed);
