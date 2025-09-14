@@ -41,6 +41,66 @@ function setTotalProblemsCount(newTotal) {
     updateScoreDisplay();
 }
 
+function getSolvedAnswers()
+{
+    const solvedItems = [];
+    
+    const gateContainers = document.querySelectorAll('.problem-container, .wait-gate-container');
+    gateContainers.forEach(container =>
+    {
+        // 問題のゲート
+        const problemId = container.dataset.problemBlockId;
+        if (problemId)
+        {
+            // 対応する判定ボタンを取得
+            const checkButton = container.querySelector(`button[data-problem-id="${problemId}"][onclick="checkProblemAnswer(this)"]`);
+
+            // ボタンが無効化（disabled）されていれば「解決済み」とみなす
+            if (checkButton && checkButton.disabled)
+            {
+                if (DEBUG_MODE) console.log(`[SOLVED] dataset=`, checkButton.dataset);
+                
+                const answerTexts = checkButton.dataset.answers.split(',').map((ans) => {
+                    const raw_answer = decodeURIComponent(escape(atob(ans).trim())).slice(currentMagicPrefix.length);
+                    // const raw_answer = atob(ans).slice(currentMagicPrefix.length);
+                    return raw_answer;
+                });
+                if (DEBUG_MODE) console.log(`[SOLVED] ansText=`, answerTexts);
+            
+                solvedItems.push({
+                    id: `問題-${problemId}`,
+                    ans: answerTexts
+                });
+            }
+        }
+        
+        // 待機のゲート
+        const waitId = container.dataset.waitBlockId;
+        if (waitId)
+        {
+            // 対応する解除ボタンを取得
+            const checkButton = container.querySelector(`button[data-wait-id="${waitId}"][onclick="checkWaitCondition(this)"]`);
+
+            // ボタンが無効化されていれば「解決済み」とみなす
+            if (checkButton && checkButton.disabled)
+            {
+                // 待機ゲートには明確な「答え」がないため、タイトルを表示
+                const answerTexts = checkButton.dataset.password.split(',').map((ans) =>
+                    decodeURIComponent(escape(atob(ans).trim())).slice(currentMagicPrefix.length));
+                
+                if (DEBUG_MODE) console.log(`[SOLVED] `, checkButton.dataset);
+                if (DEBUG_MODE) console.log(`[SOLVED] answerText=${answerTexts}`);
+                
+                solvedItems.push({
+                    id: `待機-${waitId}`,
+                    ans: answerTexts
+                });
+            }
+        }
+    });
+
+    return solvedItems;
+}
 function resetScoreAndProblems() {
     correctProblemsCount = 0;
     totalProblemsCount = 0; // 全問題数もリセットする場合
@@ -199,6 +259,7 @@ function loadProgress()
         console.error("ローカルストレージからの読み込みまたは解析に失敗しました:", e);
         correctProblemsCount = 0;
         skipCount = 0;
+        solvedAnswers = [];
         updateScoreDisplay();
     }
 }

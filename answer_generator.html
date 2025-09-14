@@ -83,7 +83,7 @@
                 if (!args) { return line; }
 
                 const command = args[0];
-                const isPb = (command === '#pb' && args.length >= 4);
+                const isPb = ((command === '#pb' && args.length >= 4) || (command === '##pb' && args.length >= 4));
                 const isWt = (command === '#wt' && args.length >= 4);
 
                 if (isPb || isWt)

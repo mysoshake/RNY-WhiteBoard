@@ -129,8 +129,8 @@ function parseMarkdownToHTML(rawText)
             // このコマンドは画面には何も表示しない
             return ""; 
         },
-        "#pb": (args) => createProblemHTML(args, { isSubProblem: false, counters, processInline, cooldown: currentCooldownForProblems }),
         "##pb": (args) => createProblemHTML(args, { isSubProblem: true, counters, processInline, cooldown: currentCooldownForProblems }),
+        "#pb": (args) => createProblemHTML(args, { isSubProblem: false, counters, processInline, cooldown: currentCooldownForProblems }),
         "#wt": (args) => createWaitGateHTML(args, { counters, processInline }),
         "#bg": (args, rawContent) => createCodeBlockHTML(args, rawContent)
     };
@@ -242,6 +242,8 @@ function parseMarkdownToHTML(rawText)
         
         if (args && commandProcessors[args[0]])
         {
+            if (DEBUG_MODE) console.log(args);
+            
             flushParagraphBuffer();
             if (!inListBlock) {
                 closeListsDeeperThan(-1);
@@ -317,6 +319,8 @@ function parseMarkdownToHTML(rawText)
 
 function createProblemHTML(args, options)
 {
+    if (DEBUG_MODE) console.log('[GEN_PB] 問題HTMLの生成', args);
+    
     if (args.length < 4) { return `<p style="color:red;">問題エラー: 引数不足</p>`; }
     const problemId = ++options.counters.problem;
     const title = options.processInline(args[1]);
@@ -486,7 +490,7 @@ function parseNArgContent(text, prefix, arglen) {
 }
 
 function parseCommandAndArguments(textLine) {
-    const commandMatch = textLine.match(/^([#]{1,6}(?={)|([#@][a-zA-Z0-9_-]+))\s*/);
+    const commandMatch = textLine.match(/^([#]{1,6}(?={)|((#|##|@)[a-zA-Z0-9_-]+))\s*/);
     if (!commandMatch) {
         return null;
     }

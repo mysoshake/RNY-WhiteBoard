@@ -27,10 +27,29 @@ function escapeHtml(unsafeText)
     return div.innerHTML;
 }
 
+function updateAnswerSidebarDisplay()
+{
+    const listElement = document.getElementById('answer-list');
+    if (!listElement)
+    {
+        return;
+    }
+
+    const answers = getSolvedAnswers();
+    listElement.innerHTML = ''; // 一旦リストを空にする
+
+    answers.forEach(answer =>
+    {
+        const li = document.createElement('li');
+        li.textContent = `${answer.id}｜${answer.ans}`;
+        listElement.appendChild(li);
+    });
+}
+
 // ページ全体のコンテンツ表示状態を更新する関数
 function updateContentVisibility()
 {
-    console.log("--- 表示状態の更新を開始 ---");
+    console.log("[VIS] --- 表示状態の更新を開始 ---");
 
     let masterShowAll = false;
     let stopShowing = false;      // これ以降の要素を非表示にするかどうかのフラグ
@@ -123,7 +142,7 @@ function updateContentVisibility()
             }
         }
     });
-    console.log("\n--- 表示状態の更新を終了 ---");
+    console.log("\n[VIS] --- 表示状態の更新を終了 ---");
 }
 
 function checkWaitCondition(buttonElement)
@@ -206,36 +225,36 @@ function checkWaitCondition(buttonElement)
         }
         saveProgress();
         updateContentVisibility();
+        updateAnswerSidebarDisplay();
+    
     }
 }
 
-function handleProblemInputEnter(event)
+function handleEnterKey(event)
 {
-    if (event.key === 'Enter' || event.keyCode === 13)
-        {
-        event.preventDefault();
-        const inputElement = event.target;
-        const buttonElement = inputElement.nextElementSibling; // 「解除」ボタン
-        if (buttonElement && buttonElement.tagName === 'BUTTON' && !buttonElement.disabled)
-        {
-            checkProblemAnswer(buttonElement);
-        }
-    }
-}
-
-function handleWaitInputEnter(event)
-{
+    if (DEBUG_MODE) console.log(`[EV_H] イベント呼び出し  ${event}  `);
+    
     if (event.key === 'Enter' || event.keyCode === 13)
     {
         event.preventDefault();
         const inputElement = event.target;
-        const buttonElement = inputElement.nextElementSibling; // 「解除」ボタン
+        const buttonElement = inputElement.nextElementSibling;
+
         if (buttonElement && buttonElement.tagName === 'BUTTON' && !buttonElement.disabled)
         {
-            checkWaitCondition(buttonElement);
+            if (buttonElement.hasAttribute('data-problem-id'))
+            {
+                checkProblemAnswer(buttonElement);
+            }
+            else if (buttonElement.hasAttribute('data-wait-id'))
+            {
+                checkWaitCondition(buttonElement);
+            }
         }
     }
 }
+
+
 // 問題スキップ用関数
 function skipProblem(buttonElement)
 {   
@@ -297,13 +316,14 @@ function skipProblem(buttonElement)
     
     saveProgress();
     updateContentVisibility();
+    updateAnswerSidebarDisplay();
     
     const allSkipButtons = document.querySelectorAll('.skip-button');
     allSkipButtons.forEach(btn =>
     {
         btn.disabled = true;
     });
-
+    
     setTimeout(() =>
     {
         document.querySelectorAll('.skip-button').forEach(btn =>
@@ -381,6 +401,7 @@ function checkProblemAnswer(buttonElement)
     updateScoreDisplay();
     saveProgress();
     updateContentVisibility();
+    updateAnswerSidebarDisplay();
 }
 
 
@@ -417,6 +438,18 @@ document.addEventListener('DOMContentLoaded', () =>
         return;
     }
     
+    const dynamicElementsHTML = `
+        <div id="answer-sidebar">
+            <h3>正解一覧</h3>
+            <ul id="answer-list"></ul>
+        </div>
+        <div id="score-counter">
+            正解数: <span id="correct-answers-count">0</span> 
+            / 全問題数: <span id="total-problems-count">0</span>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', dynamicElementsHTML);
+    
     // 1. parser.jsを呼び出して、HTMLと各種設定を取得
     const rawText = sourceElement.textContent;
     const result = parseMarkdownToHTML(rawText);
@@ -436,26 +469,23 @@ document.addEventListener('DOMContentLoaded', () =>
     loadProgress();
     updateScoreDisplay();
     updateContentVisibility(); 
+    updateAnswerSidebarDisplay();
     
     // 5. イベントリスナー登録 & 外部ライブラリ実行
-    const problemInputs = outputElement.querySelectorAll('.problem-interactive input[type="text"]');
-    problemInputs.forEach(input => {
-        input.addEventListener('keydown', handleProblemInputEnter);
-    });
-    
-    const waitInputs = outputElement.querySelectorAll('.wait-gate-interactive input[type="text"]');
-    waitInputs.forEach(input => {
-        input.addEventListener('keydown', handleWaitInputEnter);
+    const allInputs = outputElement.querySelectorAll('.problem-interactive input[type="text"], .wait-gate-interactive input[type="text"]');
+    allInputs.forEach(input =>
+    {
+        input.addEventListener('keydown', handleEnterKey);
     });
     
     const scoreCounterElement = document.getElementById('score-counter');
     if (scoreCounterElement) {
         scoreCounterElement.addEventListener('click', handleScoreAreaClick);
-        if (DEBUG_MODE) console.log("OK: スコア一覧(#score-counter)にクリックイベントリスナーを登録しました。");
+        if (DEBUG_MODE) console.log("[SCORE] :OKスコア一覧(#score-counter)にクリックイベントリスナーを登録しました。");
     }
     else
     {
-        if (DEBUG_MODE) console.error("エラー: スコア一覧のHTML要素(#score-counter)が見つかりません。");
+        if (DEBUG_MODE) console.error("[SCORE] エラー: スコア一覧のHTML要素(#score-counter)が見つかりません。");
     }
     
     window.MathJax = {
