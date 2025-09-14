@@ -57,21 +57,21 @@ function decodeAnswer(encodedAns, prefix)
     const answerTexts = encodedAns.split(',').map((ans) => {
         
         const trimmed = atob(ans).trim();
-        if (DEBUG_MODE) console.log("[DECODE] ", trimmed);
+        if (DEBUG_MODE) console.log("[DECODE] trimmed:", trimmed);
         
         const escaped = escape(trimmed);
-        if (DEBUG_MODE) console.log("[DECODE] ", escaped);
+        if (DEBUG_MODE) console.log("[DECODE] escaped:", escaped);
         
-        const uriDecoded = decodeURIComponent(escaped);
-        if (DEBUG_MODE) console.log("[DECODE] ", uriDecoded);
+        const decoded = escaped.slice(currentMagicPrefix.length);
+        if (DEBUG_MODE) console.log("[DECODE] decoded:", decoded);
         
-        const decoded = uriDecoded.slice(currentMagicPrefix.length);
-        if (DEBUG_MODE) console.log("[DECODE] ", decoded);
+        const uriDecoded = decodeURIComponent(decoded);
+        if (DEBUG_MODE) console.log("[DECODE] URICDed:", uriDecoded);
         
-        return decoded;
+        return uriDecoded;
     });
     
-    if (DEBUG_MODE) console.log(`[SOLVED] ansText=`, answerTexts);
+    if (DEBUG_MODE) console.log(`[DECODE] ansText:`, answerTexts);
     
     return answerTexts;
 }
