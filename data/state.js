@@ -55,7 +55,11 @@ function setTotalProblemsCount(newTotal) {
 function decodeAnswer(encodedAns, prefix)
 {
     const answerTexts = encodedAns.split(',').map((ans) => {
-        decodeURIComponent(escape(atob(ans).trim())).slice(currentMagicPrefix.length)
+        
+        const trimmed = atob(ans).trim();
+        const escaped = escape(trimmed);
+        const uriDecoded = decodeURIComponent(escaped);
+        return uriDecoded.slice(currentMagicPrefix.length);
     });
     
     if (DEBUG_MODE) console.log(`[SOLVED] ansText=`, answerTexts);
