@@ -54,9 +54,7 @@ function setTotalProblemsCount(newTotal) {
 
 function decodeAnswer(encodedAns, prefix)
 {
-    if (DEBUG_MODE) console.log(`[SOLVED] dataset=`, checkButton.dataset);
-    
-    const answerTexts = checkButton.dataset.answers.split(',').map((ans) => {
+    const answerTexts = encodedAns.split(',').map((ans) => {
         decodeURIComponent(escape(atob(ans).trim())).slice(currentMagicPrefix.length)
     });
     
@@ -79,7 +77,9 @@ function getSolvedAnswers()
             // 対応する判定ボタンを取得
             const checkButton = container.querySelector(`button[data-problem-id="${problemId}"][onclick="checkProblemAnswer(this)"]`);
             const answerTexts = decodeAnswer(checkButton.dataset.answers, currentMagicPrefix);
-
+        
+            if (DEBUG_MODE) console.log(`[SOLVED] dataset=`, checkButton.dataset);
+            
             if (checkButton && checkButton.disabled)
             {
                 solvedItems.push({
@@ -96,7 +96,9 @@ function getSolvedAnswers()
             // 対応する解除ボタンを取得
             const checkButton = container.querySelector(`button[data-wait-id="${waitId}"][onclick="checkWaitCondition(this)"]`);
             const answerTexts = decodeAnswer(checkButton.dataset.password, currentMagicPrefix);
-
+            
+            if (DEBUG_MODE) console.log(`[SOLVED] dataset=`, checkButton.dataset);
+            
             if (checkButton && checkButton.disabled)
             {
                 solvedItems.push({
