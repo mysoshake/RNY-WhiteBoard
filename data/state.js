@@ -284,7 +284,7 @@ function loadProgress()
         console.error("ローカルストレージからの読み込みまたは解析に失敗しました:", e);
         correctProblemsCount = 0;
         skipCount = 0;
-        isSidebarVisible = appData.isSidebarVisible !== false;
+        isSidebarVisible = appData.isSidebarVisible === false;
         solvedAnswers = [];
         updateScoreDisplay();
     }
