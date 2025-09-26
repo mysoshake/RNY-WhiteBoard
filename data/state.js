@@ -222,6 +222,7 @@ function loadProgress()
         // もし保存された値を使いたいなら:
         // totalProblemsCount = appData.totalProblemsCount || 0;
         skipCount = appData.skipCount || 0;
+        isSidebarVisible = appData.isSidebarVisible
 
         if (appData.problemStates) {
             for (const problemId in appData.problemStates) {
