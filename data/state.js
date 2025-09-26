@@ -206,6 +206,7 @@ function saveProgress() {
 
 function loadProgress()
 {
+    console.log("ストレージからデータを読み込む");
     const savedDataString = localStorage.getItem(getStorageKey());
     if (!savedDataString) {
         correctProblemsCount = 0; // 状態変数も初期化
